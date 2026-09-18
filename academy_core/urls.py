@@ -14,6 +14,7 @@ urlpatterns = [
 ]
 
 handler400 = 'academy_core.views.bad_request_handler'
+handler500 = 'academy_core.views.server_error_handler'
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
