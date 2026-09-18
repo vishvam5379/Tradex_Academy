@@ -14,7 +14,7 @@ venv/
 ENV/
 
 # Database & media
-db.sqlite3
+# db.sqlite3 included for serverless deployment
 db.sqlite3-journal
 media/
 staticfiles/

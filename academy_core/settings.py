@@ -83,7 +83,19 @@ USE_SQLITE = os.getenv('USE_SQLITE', 'True').lower() in ('true', '1', 'yes')
 IS_VERCEL = 'VERCEL' in os.environ or os.getenv('IS_VERCEL', 'False').lower() in ('true', '1', 'yes')
 
 if USE_SQLITE:
-    db_path = (Path('/tmp') / 'db.sqlite3') if IS_VERCEL else (BASE_DIR / 'db.sqlite3')
+    if IS_VERCEL:
+        tmp_db = Path('/tmp') / 'db.sqlite3'
+        base_db = BASE_DIR / 'db.sqlite3'
+        if not tmp_db.exists() and base_db.exists():
+            import shutil
+            try:
+                shutil.copy2(base_db, tmp_db)
+            except Exception:
+                pass
+        db_path = tmp_db if tmp_db.exists() else base_db
+    else:
+        db_path = BASE_DIR / 'db.sqlite3'
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
