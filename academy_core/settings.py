@@ -13,20 +13,17 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-trading-academy-sec
 
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost,.vercel.app,*').split(',')
-    if host.strip()
-]
+ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        'CSRF_TRUSTED_ORIGINS',
-        'https://*.vercel.app,https://*.now.sh,http://127.0.0.1,http://localhost'
-    ).split(',')
-    if origin.strip()
+    'https://*.vercel.app',
+    'https://*.now.sh',
+    'http://127.0.0.1',
+    'http://localhost',
 ]
+
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Application definition
 INSTALLED_APPS = [
