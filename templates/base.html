@@ -1,0 +1,51 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Tradex Academy | Professional Trading Curriculum{% endblock %}</title>
+  <meta name="description" content="{% block meta_desc %}Institutional video curriculum for Forex, Commodities, Futures & Options, and Indian Equities.{% endblock %}">
+  
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons (Outline) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- Flash Messages -->
+  {% if messages %}
+  <div class="messages-container" id="messagesContainer">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="info" style="width: 15px; height: 15px; flex-shrink: 0;"></i>
+        <span>{{ message }}</span>
+      </div>
+      <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% block body_content %}
+  {% endblock %}
+
+  <!-- Core Scripts -->
+  <script src="{% static 'js/main.js' %}"></script>
+  <script>
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

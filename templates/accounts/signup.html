@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Create account | Tradex Academy{% endblock %}
+
+{% block body_content %}
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background-color: var(--bg-app);">
+  <div style="width: 100%; max-width: 400px;">
+    <!-- Brand Header -->
+    <div style="margin-bottom: 24px;">
+      <a href="{% url 'courses:landing' %}" class="brand-logo" style="margin-bottom: 16px;">
+        <div class="brand-icon">
+          <i data-lucide="bar-chart-2" style="width: 16px; height: 16px;"></i>
+        </div>
+        <span>TRADEX <span style="color: var(--text-muted); font-weight: 400;">ACADEMY</span></span>
+      </a>
+      <h1 style="font-size: 1.35rem; color: var(--text-primary); margin-bottom: 4px;">Create an account</h1>
+      <p style="color: var(--text-secondary); font-size: 0.8125rem;">Register to access structured Forex and Indian market video lessons.</p>
+    </div>
+
+    <!-- Sign Up Card -->
+    <div class="card" style="padding: 24px;">
+      <form method="POST" action="{% url 'accounts:signup' %}">
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label class="form-label" for="name-input">Full name</label>
+          {{ form.name }}
+          {% if form.name.errors %}
+            <div class="form-error">{{ form.name.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="email-input">Email address</label>
+          {{ form.email }}
+          {% if form.email.errors %}
+            <div class="form-error">{{ form.email.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="phone-input">Phone number (optional)</label>
+          {{ form.phone }}
+          {% if form.phone.errors %}
+            <div class="form-error">{{ form.phone.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="referral-input">Referral code (optional)</label>
+          {{ form.referral_code }}
+          {% if form.referral_code.errors %}
+            <div class="form-error">{{ form.referral_code.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password-input">Password</label>
+          {{ form.password }}
+          {% if form.password.errors %}
+            <div class="form-error">{{ form.password.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirm-password-input">Confirm password</label>
+          {{ form.confirm_password }}
+          {% if form.confirm_password.errors %}
+            <div class="form-error">{{ form.confirm_password.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top: 8px;" id="submit-signup-btn">
+          Create account
+        </button>
+      </form>
+    </div>
+
+    <!-- Footer link -->
+    <div style="text-align: center; margin-top: 16px; font-size: 0.8125rem; color: var(--text-muted);">
+      Already have an account? 
+      <a href="{% url 'accounts:signin' %}" style="color: var(--text-primary); font-weight: 500; margin-left: 4px;">Sign in</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

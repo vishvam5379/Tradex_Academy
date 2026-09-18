@@ -1,0 +1,118 @@
+{% extends "dashboard_base.html" %}
+{% load static %}
+
+{% block title %}My subscription | Tradex Academy{% endblock %}
+{% block header_title %}Subscription & billing{% endblock %}
+
+{% block dashboard_css %}
+<link rel="stylesheet" href="{% static 'css/checkout.css' %}">
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 860px;">
+  <!-- Section Title -->
+  <div style="margin-bottom: 24px;">
+    <h1 style="font-size: 1.4rem; color: var(--text-primary); margin-bottom: 4px;">My subscription</h1>
+    <p style="color: var(--text-secondary); font-size: 0.8125rem;">Manage membership validity, view plan terms, and review billing history.</p>
+  </div>
+
+  <!-- Subscription Status Card -->
+  <div class="subscription-hero-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+      <div>
+        {% if has_active_subscription %}
+        <span class="badge badge-green" style="margin-bottom: 6px;">Active subscription</span>
+        <h2 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 4px;">{{ active_sub.plan_name }}</h2>
+        <p style="color: var(--text-secondary); font-size: 0.8125rem;">
+          Verified access enabled for your active curriculum modules and strategy tools.
+        </p>
+        {% else %}
+        <span class="badge badge-red" style="margin-bottom: 6px;">No active plan</span>
+        <h2 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 4px;">Free account tier</h2>
+        <p style="color: var(--text-secondary); font-size: 0.8125rem;">
+          Your subscription is currently inactive. Video lessons are locked.
+        </p>
+        {% endif %}
+      </div>
+
+      <div>
+        {% if has_active_subscription %}
+        <div style="text-align: right;">
+          <div class="num" style="font-size: 1.8rem; font-weight: 700; color: var(--text-primary);">
+            {{ days_remaining }} <span style="font-size: 0.875rem; color: var(--text-muted); font-weight: 400;">days left</span>
+          </div>
+          <div class="num" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
+            Expires: {{ active_sub.end_date|date:"d M Y" }}
+          </div>
+          <a href="{% url 'subscriptions:checkout' %}?plan={{ active_sub.plan_type }}" class="btn btn-secondary btn-sm">
+            Upgrade / Renew plan
+          </a>
+        </div>
+        {% else %}
+        <a href="{% url 'subscriptions:checkout' %}" class="btn btn-primary btn-lg">
+          Choose a plan to subscribe
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if has_active_subscription %}
+    <!-- Validity Bar -->
+    <div style="margin-top: 20px;">
+      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">
+        <span class="num">Started: {{ active_sub.start_date|date:"d M Y" }}</span>
+        <span class="num">{{ active_sub.validity_percentage_left }}% validity remaining</span>
+        <span class="num">Expires: {{ active_sub.end_date|date:"d M Y" }}</span>
+      </div>
+      <div class="subscription-countdown-bar-wrapper">
+        <div class="subscription-countdown-bar-fill" style="width: {{ active_sub.validity_percentage_left }}%;"></div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Billing History Table -->
+  <div style="margin-top: 32px;">
+    <h3 style="font-size: 1rem; color: var(--text-primary); margin-bottom: 12px; font-weight: 600;">Billing history</h3>
+
+    <div class="card" style="padding: 0; overflow-x: auto;">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Plan</th>
+            <th>Amount</th>
+            <th>Start date</th>
+            <th>End date</th>
+            <th>Status</th>
+            <th>Payment reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sub in subscriptions %}
+          <tr>
+            <td><strong style="color: var(--text-primary); font-weight: 500;">{{ sub.plan_name }}</strong></td>
+            <td class="num">₹{{ sub.amount_paid }}</td>
+            <td class="num">{{ sub.start_date|date:"d M Y" }}</td>
+            <td class="num">{{ sub.end_date|date:"d M Y" }}</td>
+            <td>
+              {% if sub.is_currently_active %}
+              <span class="badge badge-green">Active</span>
+              {% else %}
+              <span class="badge badge-gray">{{ sub.status }}</span>
+              {% endif %}
+            </td>
+            <td><code class="num" style="font-size: 0.75rem; color: var(--text-secondary);">{{ sub.razorpay_payment_id|default:"-" }}</code></td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px; font-size: 0.8125rem;">
+              No billing records found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

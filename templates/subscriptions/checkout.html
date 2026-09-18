@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Checkout &bull; {{ selected_plan.name }} | Tradex Academy{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/checkout.css' %}">
+<style>
+  .plan-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 768px) {
+    .plan-selector-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .plan-tab-card {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    background-color: var(--bg-sidebar);
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .plan-tab-card:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+  }
+  .plan-tab-card.active {
+    border-color: var(--accent-primary);
+    background: linear-gradient(180deg, var(--bg-sidebar) 0%, rgba(16, 185, 129, 0.06) 100%);
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12);
+  }
+  .plan-tab-card.active.gold {
+    border-color: #eab308;
+    background: linear-gradient(180deg, var(--bg-sidebar) 0%, rgba(234, 179, 8, 0.06) 100%);
+    box-shadow: 0 4px 16px rgba(234, 179, 8, 0.12);
+  }
+</style>
+{% endblock %}
+
+{% block body_content %}
+<!-- Header -->
+<header style="border-bottom: 1px solid var(--border-subtle); background-color: var(--bg-sidebar); padding: 14px 0;">
+  <div class="container" style="display: flex; align-items: center; justify-content: space-between;">
+    <a href="{% url 'courses:dashboard' %}" class="brand-logo">
+      <div class="brand-icon">
+        <i data-lucide="bar-chart-2" style="width: 16px; height: 16px;"></i>
+      </div>
+      <span>TRADEX <span style="color: var(--text-muted); font-weight: 400;">ACADEMY</span></span>
+    </a>
+    
+    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted);">
+      <i data-lucide="lock" style="width: 13px; height: 13px;"></i>
+      <span>256-bit encrypted checkout</span>
+    </div>
+  </div>
+</header>
+
+<div class="checkout-wrapper">
+  <div style="margin-bottom: 24px;">
+    <h1 style="font-size: 1.4rem; color: var(--text-primary); margin-bottom: 4px;">Choose your subscription plan</h1>
+    <p style="color: var(--text-secondary); font-size: 0.8125rem;">Select your desired access tier below to proceed to secure checkout.</p>
+  </div>
+
+  <!-- Plan Selection Tabs -->
+  <div class="plan-selector-grid">
+    <!-- Standard Tier -->
+    <a href="?plan=standard" class="plan-tab-card {% if selected_plan_code == 'standard' %}active{% endif %}">
+      <div>
+        <span class="badge badge-gray" style="font-size: 0.6875rem; margin-bottom: 6px;">Core Curriculum</span>
+        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary);">Standard Academy</div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">Indian Markets + Spot Gold</div>
+      </div>
+      <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <span class="num" style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary);">₹5,000</span>
+        <span style="font-size: 0.6875rem; color: var(--text-muted);">60 days</span>
+      </div>
+    </a>
+
+    <!-- Gold Strategy Tier -->
+    <a href="?plan=gold_strategy" class="plan-tab-card {% if selected_plan_code == 'gold_strategy' %}active gold{% endif %}">
+      <div>
+        <span class="badge" style="font-size: 0.6875rem; margin-bottom: 6px; background: rgba(234, 179, 8, 0.2); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.4);">
+          Special Strategy
+        </span>
+        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary);">Forex Gold Strategy</div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">Strategy + Custom Indicator</div>
+      </div>
+      <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <span class="num" style="font-size: 1.3rem; font-weight: 700; color: #eab308;">₹10,000</span>
+        <span style="font-size: 0.6875rem; color: var(--text-muted);">60 days</span>
+      </div>
+    </a>
+
+    <!-- Combo Master Tier (Featured) -->
+    <a href="?plan=combo" class="plan-tab-card {% if selected_plan_code == 'combo' %}active{% endif %}" style="border-width: {% if selected_plan_code == 'combo' %}2px{% else %}1px{% endif %};">
+      <div>
+        <span class="badge badge-green" style="font-size: 0.6875rem; margin-bottom: 6px;">
+          Best Value &bull; 5 Months + Community
+        </span>
+        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary);">Combined Master Access</div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">All Standard + Gold Strategy</div>
+      </div>
+      <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <span class="num" style="font-size: 1.3rem; font-weight: 700; color: var(--accent-primary);">₹12,500</span>
+        <span style="font-size: 0.6875rem; color: var(--accent-primary); font-weight: 600;">5 months</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="checkout-grid">
+    <!-- Left: Plan Details -->
+    <div class="checkout-plan-card">
+      <div class="plan-header">
+        <span class="badge {% if selected_plan_code == 'combo' %}badge-green{% elif selected_plan_code == 'gold_strategy' %}badge-yellow{% else %}badge-gray{% endif %}" style="margin-bottom: 6px;">
+          {{ selected_plan.badge }}
+        </span>
+        <h2 class="plan-title">{{ selected_plan.name }}</h2>
+        <p style="color: var(--text-secondary); font-size: 0.8125rem;">
+          {{ selected_plan.description }}
+        </p>
+      </div>
+
+      <div class="plan-price-block">
+        <span class="plan-price-currency">₹</span>
+        <span class="plan-price-value num">{{ price }}</span>
+        <span class="plan-price-duration num">for {% if selected_plan_code == 'combo' %}5 months (150 days){% else %}2 months (60 days){% endif %}</span>
+      </div>
+
+      <ul class="features-list">
+        {% if selected_plan_code == 'combo' %}
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon" style="color: var(--accent-primary);"></i>
+          <div><strong>VIP Community Access Included</strong>: Regular Gold trade setups provided based on taught strategy lectures</div>
+        </li>
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon"></i>
+          <div><strong>Extended 5 Months Validity</strong> (150 days unrestricted streaming across all modules)</div>
+        </li>
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon"></i>
+          <div><strong>Includes all ₹5,000 Standard content</strong> (Indian Markets & Spot Gold)</div>
+        </li>
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon"></i>
+          <div><strong>Includes all ₹10,000 Forex Gold Strategy & Custom Strategy Indicator</strong></div>
+        </li>
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon"></i>
+          <div>Exclusive TradingView / MetaTrader indicator algorithms & signal rules</div>
+        </li>
+        {% elif selected_plan_code == 'gold_strategy' %}
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
+          <div><strong>Exclusive Proprietary Strategy Indicator</strong> (TradingView/MT5 algorithms)</div>
+        </li>
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
+          <div><strong>Pure Price Action Gold Movement Strategy</strong></div>
+        </li>
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
+          <div>London Killzone scalping algorithm</div>
+        </li>
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
+          <div>50+ backtested live trade scenarios & risk management engine</div>
+        </li>
+        {% else %}
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon"></i>
+          <div>Spot Gold (XAU/USD) price action and Dollar correlation series</div>
+        </li>
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon"></i>
+          <div>Indian Market: Futures contract mechanics & SPAN margins</div>
+        </li>
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon"></i>
+          <div>Indian Market: Options Greeks, Open Interest & Expiry scalping</div>
+        </li>
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon"></i>
+          <div>Indian Market: Stock trading, Market Structure & Break of Structure</div>
+        </li>
+        {% endif %}
+      </ul>
+
+
+      <!-- Dev/Test mode info note -->
+      <div style="background-color: var(--bg-app); border: 1px solid var(--border-subtle); border-radius: var(--radius-xs); padding: 12px; margin-top: 20px; font-size: 0.75rem; color: var(--text-secondary);">
+        <div style="color: var(--text-primary); font-weight: 600; margin-bottom: 2px;">Instant Gateway Activation</div>
+        <span>Razorpay secure checkout supports UPI (GPay, PhonePe, Paytm, BHIM), Debit/Credit Cards, Netbanking, and Wallets.</span>
+      </div>
+    </div>
+
+    <!-- Right: Summary & Pay -->
+    <div>
+      <div class="order-summary-box">
+        <div class="summary-title">Order summary</div>
+        
+        <div class="summary-row">
+          <span>{{ selected_plan.name }}</span>
+          <span class="num">₹{{ price }}.00</span>
+        </div>
+        <div class="summary-row">
+          <span>Platform fee & taxes</span>
+          <span class="num" style="color: var(--accent-primary);">₹0.00</span>
+        </div>
+        
+        <div class="summary-row total">
+          <span>Total due</span>
+          <span class="num" style="color: var(--text-primary); font-size: 1.2rem;">₹{{ price }}.00</span>
+        </div>
+
+        <button class="btn btn-primary btn-block btn-lg" id="payNowBtn" style="margin-top: 16px; {% if selected_plan_code == 'gold_strategy' %}background-color: #eab308; border-color: #ca8a04; color: #000;{% endif %}">
+          Pay ₹{{ price }} & Activate Plan
+        </button>
+
+        <div class="trust-badges">
+          <div class="trust-badge-item">
+            <i data-lucide="check" style="width: 13px; height: 13px; color: var(--accent-primary);"></i>
+            <span>Instant server-side access activation</span>
+          </div>
+          <div class="trust-badge-item">
+            <i data-lucide="shield" style="width: 13px; height: 13px; color: var(--text-muted);"></i>
+            <span>256-bit encrypted checkout via Razorpay</span>
+          </div>
+          <div class="trust-badge-item">
+            <i data-lucide="credit-card" style="width: 13px; height: 13px; color: var(--text-muted);"></i>
+            <span>Supports UPI, Cards, Netbanking, Wallets</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 12px;">
+        <a href="{% url 'courses:dashboard' %}" style="font-size: 0.75rem; color: var(--text-muted);">
+          &larr; Return to dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="{% static 'js/checkout.js' %}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    initRazorpayPayment({
+      keyId: "{{ razorpay_key_id }}",
+      orderId: "{{ razorpay_order_id }}",
+      amountInPaise: {{ amount_in_paise }},
+      currency: "{{ currency }}",
+      price: "{{ price }}",
+      planType: "{{ selected_plan_code }}",
+      planName: "{{ selected_plan.name }}",
+      userName: "{{ request.user.name|default:request.user.email }}",
+      userEmail: "{{ request.user.email }}",
+      userPhone: "{{ request.user.phone|default:'' }}"
+    });
+  });
+</script>
+{% endblock %}
+

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Payment not completed | Tradex Academy{% endblock %}
+
+{% block body_content %}
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background-color: var(--bg-app);">
+  <div style="max-width: 420px; width: 100%;">
+    
+    <div class="card" style="padding: 32px 28px; border-color: rgba(248, 81, 73, 0.3);">
+      <div style="width: 40px; height: 40px; border-radius: 50%; background-color: var(--accent-danger-subtle); border: 1px solid rgba(248, 81, 73, 0.3); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; color: var(--accent-danger);">
+        <i data-lucide="alert-circle" style="width: 20px; height: 20px;"></i>
+      </div>
+
+      <span class="badge badge-red" style="margin-bottom: 8px;">Transaction incomplete</span>
+      <h1 style="font-size: 1.35rem; color: var(--text-primary); margin-bottom: 6px;">Payment not processed</h1>
+      <p style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 24px;">
+        The payment was cancelled or could not be completed. Your account was not charged.
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <a href="{% url 'subscriptions:checkout' %}" class="btn btn-primary btn-block">
+          Retry subscription (₹5,000)
+        </a>
+        <a href="{% url 'courses:dashboard' %}" class="btn btn-secondary btn-block">
+          Return to dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% block dashboard_css %}{% endblock %}
+{% endblock %}
+
+{% block body_content %}
+<div class="dashboard-layout">
+  <!-- Mobile Backdrop -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- Persistent Left Sidebar -->
+  <aside class="dashboard-sidebar" id="dashboardSidebar">
+    <div class="sidebar-header">
+      <a href="{% url 'courses:dashboard' %}" class="brand-logo">
+        <div class="brand-icon">
+          <i data-lucide="bar-chart-2" style="width: 16px; height: 16px;"></i>
+        </div>
+        <span>TRADEX <span style="color: var(--text-muted); font-weight: 400;">ACADEMY</span></span>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">User Dashboard</div>
+      
+      <div class="nav-item">
+        <a href="{% url 'courses:dashboard' %}#overview" class="nav-link dash-sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" data-section="overview">
+          <i data-lucide="home" style="width: 15px; height: 15px;"></i>
+          <span>🏠 Overview</span>
+        </a>
+      </div>
+
+      <div class="nav-item">
+        <a href="{% url 'courses:dashboard' %}#my-courses" class="nav-link dash-sidebar-link" data-section="my-courses">
+          <i data-lucide="book-open" style="width: 15px; height: 15px;"></i>
+          <span>📚 My Courses</span>
+        </a>
+      </div>
+
+      {% if user_has_combo_access %}
+      <div class="nav-item">
+        <a href="{% url 'courses:dashboard' %}#community" class="nav-link dash-sidebar-link" data-section="community" style="color: #f59e0b; font-weight: 600;">
+          <i data-lucide="users" style="width: 15px; height: 15px; color: #f59e0b;"></i>
+          <span>👥 Community 🔥</span>
+          <span class="badge badge-gold" style="font-size: 0.625rem; margin-left: auto; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);">₹12.5k VIP</span>
+        </a>
+      </div>
+      {% endif %}
+
+      <div class="nav-item">
+        <a href="{% url 'courses:dashboard' %}#subscription" class="nav-link dash-sidebar-link" data-section="subscription">
+          <i data-lucide="credit-card" style="width: 15px; height: 15px;"></i>
+          <span>💳 Subscription</span>
+        </a>
+      </div>
+
+      <div class="nav-item">
+        <a href="{% url 'courses:dashboard' %}#payment-history" class="nav-link dash-sidebar-link" data-section="payment-history">
+          <i data-lucide="receipt" style="width: 15px; height: 15px;"></i>
+          <span>💰 Payment History</span>
+        </a>
+      </div>
+
+      <div class="nav-item">
+        <a href="{% url 'accounts:profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+          <i data-lucide="user" style="width: 15px; height: 15px;"></i>
+          <span>👤 Profile</span>
+        </a>
+      </div>
+
+      <div class="nav-section-title" style="margin-top: 16px;">📈 Markets (Curriculum)</div>
+
+      <!-- Categories & Subcategories Tree -->
+      {% for cat in sidebar_categories %}
+      <div class="category-tree-group">
+        <div class="category-parent-header">
+          <div class="category-parent-title">
+            {% if cat.slug == 'forex' %}
+            <i data-lucide="globe" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+            {% else %}
+            <i data-lucide="trending-up" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+            {% endif %}
+            <span>{{ cat.name }}</span>
+          </div>
+          <i data-lucide="chevron-down" class="tree-chevron" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+        </div>
+
+        <ul class="subcategory-list">
+          {% for sub in cat.subcategories.all %}
+          <li class="subcategory-item">
+            <a href="{% url 'courses:category_videos' cat.slug sub.slug %}" 
+               class="subcategory-link {% if request.resolver_match.kwargs.category_slug == cat.slug and request.resolver_match.kwargs.subcategory_slug == sub.slug %}active{% endif %}"
+               id="nav-sub-{{ sub.slug }}">
+              <span>{{ sub.name }}</span>
+              <span class="badge badge-gray num" style="font-size: 0.6875rem; padding: 1px 5px;">{{ sub.videos.count }}</span>
+            </a>
+          </li>
+          {% empty %}
+          <li style="padding: 6px 12px; font-size: 0.75rem; color: var(--text-muted);">No categories available</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+
+    </nav>
+
+    <!-- Sidebar Plan Indicator -->
+    <div class="sidebar-footer">
+      {% if user_has_active_subscription %}
+      <div class="subscription-card-mini">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+          <h5 style="margin: 0;">Active plan</h5>
+          <span class="badge badge-green">Subscribed</span>
+        </div>
+        <p class="num">
+          {{ active_subscription.days_remaining }} days remaining
+        </p>
+        <a href="{% url 'subscriptions:my_subscription' %}" class="btn btn-secondary btn-sm btn-block" style="font-size: 0.75rem;">Manage subscription</a>
+      </div>
+      {% else %}
+      <div class="subscription-card-mini">
+        <h5>Free tier</h5>
+        <p>Unlock all Forex and Indian Market video lessons.</p>
+        <a href="{% url 'subscriptions:checkout' %}" class="btn btn-primary btn-sm btn-block" id="sidebarSubscribeBtn" style="font-size: 0.75rem;">
+          Subscribe &bull; ₹5,000
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="dashboard-main">
+    <!-- Top Minimal Header -->
+    <header class="dashboard-header">
+      <div class="header-left">
+        <button class="mobile-sidebar-toggle" id="mobileSidebarToggle" aria-label="Toggle navigation">
+          <i data-lucide="menu" style="width: 18px; height: 18px;"></i>
+        </button>
+        <span style="font-size: 0.875rem; color: var(--text-secondary); font-weight: 500;">
+          {% block header_title %}Academy{% endblock %}
+        </span>
+      </div>
+
+      <div class="header-right">
+        {% if user_has_active_subscription %}
+        <span class="badge badge-green num">
+          <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+          {{ active_subscription.plan_name }} &mdash; {{ active_subscription.days_remaining }} days left
+        </span>
+        {% else %}
+        <a href="{% url 'subscriptions:checkout' %}" class="badge badge-gray num" style="text-decoration: none; color: var(--text-secondary);">
+          Not subscribed
+        </a>
+        <a href="{% url 'subscriptions:checkout' %}" class="btn btn-primary btn-sm">
+          Subscribe (₹5,000)
+        </a>
+        {% endif %}
+
+        <!-- User Badge linking to profile -->
+        <a href="{% url 'accounts:profile' %}" class="user-profile-badge" style="text-decoration: none;" title="View account profile">
+          <div class="user-avatar">
+            {{ request.user.name|default:request.user.email|slice:":1"|upper }}
+          </div>
+          <span>{{ request.user.name|default:request.user.email }}</span>
+        </a>
+        <a href="{% url 'accounts:logout' %}" style="color: var(--text-muted); display: flex; align-items: center;" title="Sign out">
+          <i data-lucide="log-out" style="width: 15px; height: 15px;"></i>
+        </a>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="dashboard-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}

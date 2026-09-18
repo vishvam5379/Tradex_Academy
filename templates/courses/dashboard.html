@@ -1,0 +1,627 @@
+{% extends "dashboard_base.html" %}
+{% load static %}
+
+{% block title %}User Dashboard | Tradex Academy{% endblock %}
+{% block header_title %}User Dashboard{% endblock %}
+
+{% block content %}
+<div style="max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
+
+  <!-- User Welcome Top Header Bar -->
+  <div class="card" style="padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px;">
+    <div>
+      <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent-primary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">
+        TRADEX LMS DASHBOARD
+      </div>
+      <h1 style="font-size: 1.4rem; font-weight: 700; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 8px;">
+        Welcome, {{ request.user.name|default:request.user.email }} 👋
+      </h1>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <a href="{% url 'accounts:profile' %}" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); color: #ffffff !important;">
+        <i data-lucide="user" style="width: 14px; height: 14px;"></i>
+        <span>Profile</span>
+      </a>
+      {% if not user_has_combo_access %}
+      <a href="{% url 'subscriptions:checkout' %}?plan=combo" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; font-weight: 700; color: #ffffff;">
+        <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
+        <span>Upgrade to Combo (₹12,500)</span>
+      </a>
+      {% else %}
+      <span class="badge badge-gold" style="font-size: 0.8rem; padding: 6px 12px; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 700;">
+        👑 Combo Master Active
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+
+  <!-- ========================================================================= -->
+  <!-- 🏠 SECTION 1: OVERVIEW -->
+  <!-- ========================================================================= -->
+  <section id="sec-overview" class="dash-section-pane" style="display: block;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <h2 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>🏠</span> Overview
+      </h2>
+      <span class="badge badge-gray" style="font-size: 0.75rem;">Account Summary</span>
+    </div>
+
+    <div class="grid-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+      
+      <!-- Card 1: Current Plan -->
+      <div class="card" style="padding: 20px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+          Current Plan
+        </div>
+        <div style="font-size: 1.1rem; font-weight: 700; color: #ffffff; line-height: 1.3;">
+          {% if has_subscription %}
+            {{ active_sub.plan_name }}
+          {% else %}
+            Free Tier Account
+          {% endif %}
+        </div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 6px;">
+          {% if active_sub.plan_type == 'combo' %}
+            ✨ Combined All-Access Bundle (5 Months)
+          {% elif active_sub.plan_type == 'gold_strategy' %}
+            ⭐ Forex Gold Strategy Tier
+          {% elif active_sub.plan_type == 'standard' %}
+            📘 Standard Academy Tier
+          {% else %}
+            No Active Subscription
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Card 2: Subscription Status -->
+      <div class="card" style="padding: 20px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+          Subscription Status
+        </div>
+        <div>
+          {% if has_subscription %}
+            <span class="badge badge-green" style="font-size: 0.85rem; padding: 4px 10px; display: inline-flex; align-items: center; gap: 6px; background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); font-weight: 700;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #22c55e;"></span>
+              Active Plan
+            </span>
+          {% else %}
+            <span class="badge badge-red" style="font-size: 0.85rem; padding: 4px 10px; display: inline-flex; align-items: center; gap: 6px; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 700;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444;"></span>
+              Inactive / Free
+            </span>
+          {% endif %}
+        </div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">
+          {% if has_subscription %}Verified Razorpay Access{% else %}Subscribe to start learning{% endif %}
+        </div>
+      </div>
+
+      <!-- Card 3: Expiry Date -->
+      <div class="card" style="padding: 20px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+          Expiry Date
+        </div>
+        <div class="num" style="font-size: 1.25rem; font-weight: 800; color: #38bdf8;">
+          {% if has_subscription and active_sub.end_date %}
+            {{ active_sub.end_date|date:"d M Y" }}
+          {% else %}
+            N/A
+          {% endif %}
+        </div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 6px;">
+          {% if has_subscription %}Renewal due on expiry{% else %}Unlimited preview access{% endif %}
+        </div>
+      </div>
+
+      <!-- Card 4: Days Remaining -->
+      <div class="card" style="padding: 20px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+          Days Remaining
+        </div>
+        <div class="num" style="font-size: 1.3rem; font-weight: 800; color: {% if days_remaining > 15 %}#4ade80{% elif days_remaining > 0 %}#f59e0b{% else %}#f87171{% endif %};">
+          {% if has_subscription %}
+            {{ days_remaining }} Days
+          {% else %}
+            0 Days
+          {% endif %}
+        </div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 6px;">
+          {% if days_remaining > 0 %}Full access granted{% else %}<a href="{% url 'subscriptions:checkout' %}" style="color: #38bdf8;">Get Subscribed &rarr;</a>{% endif %}
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ========================================================================= -->
+  <!-- 📚 SECTION 2: MY COURSES -->
+  <!-- ========================================================================= -->
+  <section id="sec-my-courses" class="dash-section-pane" style="display: none;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <h2 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>📚</span> My Courses
+      </h2>
+      <div style="font-size: 0.8125rem; color: #64748b;">
+        Forex &bull; Indian Market &bull; Futures & Options &bull; Stock Trading
+      </div>
+    </div>
+
+    <div class="grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+      {% for item in subcategories_data %}
+        {% if item.is_accessible %}
+        <!-- Unlocked Course Card -->
+        <div class="card" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; transition: border-color 0.2s;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+              <div>
+                <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">
+                  {{ item.obj.parent.name }}
+                </span>
+                <h3 style="font-size: 1.05rem; font-weight: 600; color: #ffffff; margin: 2px 0 0 0;">
+                  {{ item.obj.name }}
+                </h3>
+              </div>
+              <span class="badge badge-green" style="font-size: 0.6875rem;">Unlocked</span>
+            </div>
+
+            <p style="font-size: 0.8125rem; color: #cbd5e1; margin-bottom: 12px; line-height: 1.4;">
+              {{ item.obj.description|truncatewords:14 }}
+            </p>
+
+            <div class="num" style="font-size: 0.8125rem; color: #94a3b8; margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+              <span>🎬 {{ item.video_count }} Lessons</span>
+              <span>✅ {{ item.completed_count }} Completed</span>
+            </div>
+
+            <!-- Custom Progress Bar -->
+            <div style="margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #94a3b8; margin-bottom: 6px;">
+                <span>Course Progress</span>
+                <span class="num" style="font-weight: 600; color: #38bdf8;">{{ item.progress_pct }}%</span>
+              </div>
+              <div style="width: 100%; height: 8px; background-color: rgba(15, 23, 42, 0.6); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1);">
+                <div style="width: {{ item.progress_pct }}%; height: 100%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 4px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <a href="{% url 'courses:category_videos' item.obj.parent.slug item.obj.slug %}" class="btn btn-primary btn-sm btn-block" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>Continue Learning</span>
+            <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
+          </a>
+        </div>
+        {% else %}
+        <!-- Locked Course Card -->
+        <div class="card" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9)); border: 1px dashed rgba(255, 255, 255, 0.2); border-radius: 12px; opacity: 0.85;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+              <div>
+                <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">
+                  {{ item.obj.parent.name }}
+                </span>
+                <h3 style="font-size: 1.05rem; font-weight: 600; color: #ffffff; margin: 2px 0 0 0;">
+                  {{ item.obj.name }}
+                </h3>
+              </div>
+              <span class="badge badge-red" style="font-size: 0.6875rem; display: inline-flex; align-items: center; gap: 4px;">
+                <i data-lucide="lock" style="width: 11px; height: 11px;"></i> Locked
+              </span>
+            </div>
+
+            <p style="font-size: 0.8125rem; color: #94a3b8; margin-bottom: 16px; line-height: 1.4;">
+              🔒 Premium Module. Requires <strong>
+              {% if item.obj.tier_required == 'gold_strategy' %}Forex Gold Strategy Plan (₹10,000){% else %}Standard Plan (₹5,000){% endif %}
+              </strong> or Combined Master Bundle.
+            </p>
+          </div>
+
+          <a href="{% url 'subscriptions:checkout' %}?plan={{ item.obj.tier_required }}" class="btn btn-secondary btn-sm btn-block">
+            <span>Unlock Module &rarr;</span>
+          </a>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+
+  <!-- ========================================================================= -->
+  <!-- 👥 SECTION 3: COMMUNITY 🔥 (VISIBLE ONLY FOR ₹12,500 COMBO SUBSCRIBERS) -->
+  <!-- ========================================================================= -->
+  {% if user_has_combo_access %}
+  <section id="sec-community" class="dash-section-pane" style="display: none;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <h2 style="font-size: 1.15rem; font-weight: 700; color: #fbbf24; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>👥</span> COMMUNITY <span style="font-size: 1.2rem;">🔥</span>
+      </h2>
+      <span class="badge badge-gold" style="font-size: 0.75rem; font-weight: 700; padding: 4px 10px;">
+        👑 ₹12,500 VIP Combo Master Desk
+      </span>
+    </div>
+
+    <!-- UNLOCKED TELEGRAM-STYLE COMMUNITY (PURE WHITE CARD THEME WITH HIGH CONTRAST DARK TEXT) -->
+    <div class="card" style="padding: 0; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; min-height: 560px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);">
+      
+      <!-- Community Header Bar (Sleek Dark Top Bar with Gold Accents) -->
+      <div style="padding: 16px 22px; background: linear-gradient(135deg, #0f172a, #1e293b); border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <div style="font-size: 0.725rem; font-weight: 800; color: #fbbf24; text-transform: uppercase; letter-spacing: 0.08em; display: flex; align-items: center; gap: 6px;">
+            <span>🔥</span> TELEGRAM VIP CHANNEL
+          </div>
+          <h3 style="font-size: 1.15rem; font-weight: 700; color: #ffffff !important; margin: 2px 0 0 0;">
+            Combo Master Live Trading Desk
+          </h3>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #4ade80 !important; border: 1px solid rgba(34, 197, 94, 0.4); font-size: 0.75rem; font-weight: 700;">
+            🟢 42 Online
+          </span>
+          <span class="badge badge-gold" style="font-size: 0.75rem; font-weight: 700; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b;">
+            👀 View-Only Mode
+          </span>
+        </div>
+      </div>
+
+      <!-- Channel Selector Tabs (Clean Light Gray Pills) -->
+      <div style="padding: 12px 18px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 10px; overflow-x: auto;">
+        {% for ch in channels %}
+        <button class="tg-dash-chan-btn {% if forloop.first %}active{% endif %}" onclick="filterDashChannel('{{ ch.slug }}', this)">
+          <span>{{ ch.name }}</span>
+        </button>
+        {% endfor %}
+      </div>
+
+      <!-- Telegram Message Feed Container (Pure White Background with High Contrast Dark/Color Text) -->
+      <div id="dashTgChatFeed" style="flex: 1; padding: 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; background-color: #f1f5f9; max-height: 440px;">
+        
+        {% for msg in community_messages %}
+          {% if msg.is_trade_setup %}
+          <!-- TELEGRAM MENTOR TRADE SETUP CARD (WHITE CARD WITH GOLD/BLUE ACCENTS) -->
+          <div class="dash-tg-msg-card" data-channel="{{ msg.channel.slug }}" style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 5px solid #f59e0b; border-radius: 12px; padding: 20px; max-width: 600px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="badge" style="background: #f59e0b; color: #ffffff; font-weight: 800; font-size: 0.7rem; padding: 3px 8px; border-radius: 4px;">MENTOR</span>
+                <strong style="font-size: 0.95rem; color: #0f172a !important;">{{ msg.user.name|default:"Senior Mentor" }}</strong>
+              </div>
+              <span class="num" style="font-size: 0.78125rem; color: #64748b !important;">{{ msg.created_at|date:"h:i A" }}</span>
+            </div>
+
+            <div style="font-family: monospace; font-size: 1.05rem; color: #d97706 !important; font-weight: 800; margin-bottom: 10px;">
+              {{ msg.setup_symbol|default:"🟡 XAUUSD BUY SETUP" }}
+            </div>
+
+            <div class="num" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; color: #0f172a !important;">
+              <div><strong style="color: #475569;">Entry:</strong> <span style="color: #2563eb; font-weight: 700;">{{ msg.setup_entry }}</span></div>
+              <div><strong style="color: #475569;">SL:</strong> <span style="color: #dc2626; font-weight: 700;">{{ msg.setup_sl }}</span></div>
+              <div><strong style="color: #475569;">TP1:</strong> <span style="color: #16a34a; font-weight: 700;">{{ msg.setup_tp1 }}</span></div>
+              <div><strong style="color: #475569;">TP2:</strong> <span style="color: #16a34a; font-weight: 700;">{{ msg.setup_tp2 }}</span></div>
+            </div>
+
+            {% if msg.setup_chart_text %}
+            <div style="font-size: 0.875rem; color: #1e293b !important; background: #ffffff; padding: 12px; border-radius: 6px; line-height: 1.6; border: 1px solid #e2e8f0;">
+              <strong style="color: #2563eb;">📊 Analysis:</strong> {{ msg.setup_chart_text }}
+            </div>
+            {% endif %}
+          </div>
+
+          {% else %}
+          <!-- TELEGRAM CHAT BUBBLE (WHITE CARD WITH DARK CLEAR TEXT) -->
+          <div class="dash-tg-msg-card" data-channel="{{ msg.channel.slug }}" style="display: flex; flex-direction: column; max-width: 620px; align-self: flex-start;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding: 0 4px;">
+              {% if msg.is_mentor_post %}
+                <span class="badge" style="background: #f59e0b; color: #ffffff; font-weight: 800; font-size: 0.6875rem; padding: 2px 6px;">MENTOR</span>
+              {% endif %}
+              <strong style="font-size: 0.9rem; color: #0f172a !important;">
+                {{ msg.user.name|default:msg.user.email }}
+              </strong>
+              <span class="num" style="font-size: 0.75rem; color: #64748b !important;">{{ msg.created_at|date:"h:i A" }}</span>
+            </div>
+
+            <div style="padding: 14px 18px; border-radius: 12px; font-size: 0.925rem; line-height: 1.6; 
+                        background: #ffffff; border: 1px solid #cbd5e1; color: #0f172a !important; border-bottom-left-radius: 2px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+              
+              {% if msg.parent_reply %}
+              <div style="background: #f1f5f9; border-left: 3px solid #f59e0b; padding: 6px 10px; border-radius: 4px; font-size: 0.8rem; margin-bottom: 8px; color: #475569 !important;">
+                <strong style="color: #d97706;">Replying to {{ msg.parent_reply.user.name|default:msg.parent_reply.user.email }}:</strong>
+                <div>{{ msg.parent_reply.content|truncatechars:60 }}</div>
+              </div>
+              {% endif %}
+
+              <div style="color: #0f172a !important; font-size: 0.95rem; font-weight: 500;">{{ msg.content|linebreaksbr }}</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endfor %}
+
+      </div>
+
+      <!-- Bottom Chat Bar (White Bottom Bar) -->
+      <div style="padding: 16px 22px; background: #ffffff; border-top: 1px solid #e2e8f0;">
+        {% if request.user.is_staff or request.user.is_superuser %}
+        <!-- Staff / Mentor Post Bar -->
+        <form onsubmit="handleSendStaffChat(event)" style="display: flex; gap: 10px; align-items: center;">
+          <input type="text" id="staffChatInput" placeholder="Post a mentor setup or message..." 
+                 style="flex: 1; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; color: #0f172a; font-size: 0.9rem; outline: none;">
+          <button type="submit" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none; font-weight: 700; padding: 12px 20px; color: #ffffff;">
+            Post &rarr;
+          </button>
+        </form>
+        {% else %}
+        <!-- VIEW ONLY NOTICE FOR REGULAR MEMBERS -->
+        <div style="font-size: 0.9rem; color: #475569 !important; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px 0;">
+          <span style="color: #d97706; font-size: 1.1rem;">🔒</span>
+          <span>Only Mentors can post messages & trade setups in this Telegram channel (<strong>View Only Mode</strong>).</span>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </section>
+  {% endif %}
+
+
+  <!-- ========================================================================= -->
+  <!-- 💳 SECTION 4: SUBSCRIPTION (Current Plan, Renew, Upgrade) -->
+  <!-- ========================================================================= -->
+  <section id="sec-subscription" class="dash-section-pane" style="display: none;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <h2 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>💳</span> Subscription Management
+      </h2>
+      <a href="{% url 'subscriptions:my_subscription' %}" class="btn btn-ghost btn-sm" style="font-size: 0.8125rem; color: #2563eb; font-weight: 600;">
+        View Subscription Portal &rarr;
+      </a>
+    </div>
+
+    <div class="card" style="padding: 24px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+        <div>
+          <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px;">
+            CURRENT MEMBERSHIP PLAN
+          </div>
+          {% if has_subscription %}
+          <div style="font-size: 1.25rem; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 10px;">
+            <span style="color: #22c55e;">🟢</span>
+            <span>{{ active_sub.plan_name }}</span>
+            <span class="badge badge-green" style="font-size: 0.75rem;">₹{{ active_sub.amount_paid|floatformat:0 }}</span>
+          </div>
+          <div class="num" style="font-size: 0.85rem; color: #94a3b8; margin-top: 6px;">
+            Valid from {{ active_sub.start_date|date:"d M Y" }} to <strong style="color: #38bdf8;">{{ active_sub.end_date|date:"d M Y" }}</strong> ({{ days_remaining }} Days Left)
+          </div>
+          {% else %}
+          <div style="font-size: 1.15rem; font-weight: 600; color: #ffffff;">
+            Free Account Tier
+          </div>
+          <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 4px;">
+            No active plan. Subscribe to gain full streaming access.
+          </div>
+          {% endif %}
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          {% if has_subscription %}
+          <a href="{% url 'subscriptions:checkout' %}?plan={{ active_sub.plan_type }}" class="btn btn-sm" style="font-size: 0.875rem; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.3); color: #ffffff !important; font-weight: 600; padding: 6px 14px; border-radius: 6px; text-decoration: none;">
+            <span>Renew Plan</span>
+          </a>
+          {% endif %}
+
+          {% if not user_has_combo_access %}
+          <a href="{% url 'subscriptions:checkout' %}?plan=combo" class="btn btn-primary btn-sm" style="font-size: 0.875rem; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; font-weight: 700; color: #ffffff;">
+            <span>Upgrade to Combo (₹12,500)</span>
+          </a>
+          {% else %}
+          <span class="badge badge-gold" style="font-size: 0.85rem; padding: 6px 12px; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 700;">
+            👑 Combo Master Pass Active
+          </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========================================================================= -->
+  <!-- 💰 SECTION 5: PAYMENT HISTORY -->
+  <!-- ========================================================================= -->
+  <section id="sec-payment-history" class="dash-section-pane" style="display: none;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <h2 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>💰</span> Payment History
+      </h2>
+      <span class="badge badge-gray num" style="font-size: 0.75rem;">{{ all_payments.count }} Transaction(s)</span>
+    </div>
+
+    <div class="card" style="padding: 0; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+      {% if all_payments %}
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+          <thead>
+            <tr style="background-color: rgba(15, 23, 42, 0.8); border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #94a3b8; font-size: 0.75rem; text-transform: uppercase;">
+              <th style="padding: 14px 18px;">Date & Time</th>
+              <th style="padding: 14px 18px;">Plan Purchased</th>
+              <th style="padding: 14px 18px;">Amount</th>
+              <th style="padding: 14px 18px;">Payment / Order ID</th>
+              <th style="padding: 14px 18px;">Status</th>
+            </tr>
+          </thead>
+          <tbody class="num">
+            {% for sub in all_payments %}
+            <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #ffffff;">
+              <td style="padding: 14px 18px; color: #cbd5e1;">
+                {{ sub.created_at|date:"d M Y, H:i" }}
+              </td>
+              <td style="padding: 14px 18px; font-weight: 600; color: #ffffff;">
+                {{ sub.plan_name }}
+              </td>
+              <td style="padding: 14px 18px; font-weight: 700; color: #38bdf8;">
+                ₹{{ sub.amount_paid|floatformat:0 }}
+              </td>
+              <td style="padding: 14px 18px; font-family: monospace; font-size: 0.78125rem; color: #cbd5e1;">
+                {{ sub.razorpay_payment_id|default:sub.razorpay_order_id|default:"Activated" }}
+              </td>
+              <td style="padding: 14px 18px;">
+                {% if sub.status == 'ACTIVE' %}
+                  <span class="badge badge-green" style="font-size: 0.6875rem;">ACTIVE ✓</span>
+                {% elif sub.status == 'EXPIRED' %}
+                  <span class="badge badge-gray" style="font-size: 0.6875rem;">EXPIRED</span>
+                {% else %}
+                  <span class="badge badge-red" style="font-size: 0.6875rem;">{{ sub.status }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="padding: 32px; text-align: center; color: #94a3b8; font-size: 0.875rem;">
+        No payment transactions found.
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+</div>
+
+<!-- Single Section Display Logic & Channel Filtering -->
+<script>
+  function switchDashboardSection(sectionId) {
+    if (!sectionId) sectionId = 'overview';
+    
+    // Hide all section panes
+    document.querySelectorAll('.dash-section-pane').forEach(pane => {
+      pane.style.display = 'none';
+    });
+
+    // Deactivate sidebar links
+    document.querySelectorAll('.dash-sidebar-link').forEach(link => {
+      link.classList.remove('active');
+    });
+
+    // Display targeted section pane
+    const targetPane = document.getElementById('sec-' + sectionId);
+    if (targetPane) {
+      targetPane.style.display = 'block';
+    } else {
+      const defaultPane = document.getElementById('sec-overview');
+      if (defaultPane) defaultPane.style.display = 'block';
+    }
+
+    // Activate sidebar link
+    const targetSideLink = document.querySelector(`.dash-sidebar-link[data-section="${sectionId}"]`);
+    if (targetSideLink) {
+      targetSideLink.classList.add('active');
+    }
+  }
+
+  function initSectionFromHash() {
+    let hash = window.location.hash.replace('#', '');
+    if (!hash || !['overview', 'my-courses', 'community', 'subscription', 'payment-history'].includes(hash)) {
+      hash = 'overview';
+    }
+    switchDashboardSection(hash);
+  }
+
+  function filterDashChannel(channelSlug, btnEl) {
+    document.querySelectorAll('.tg-dash-chan-btn').forEach(btn => btn.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+
+    document.querySelectorAll('.dash-tg-msg-card').forEach(card => {
+      if (card.getAttribute('data-channel') === channelSlug) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  function handleSendStaffChat(event) {
+    event.preventDefault();
+    const input = document.getElementById('staffChatInput');
+    const content = input.value.trim();
+    if (!content) return;
+
+    fetch('/api/community/channel/trade-setups/send/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ content: content })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        input.value = '';
+        location.reload();
+      }
+    });
+  }
+
+  function getCsrfToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    initSectionFromHash();
+
+    // Attach click listeners to sidebar links
+    document.querySelectorAll('.dash-sidebar-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        const sec = link.getAttribute('data-section');
+        if (sec) {
+          switchDashboardSection(sec);
+        }
+      });
+    });
+
+    // Default filter first channel
+    const firstChanBtn = document.querySelector('.tg-dash-chan-btn');
+    if (firstChanBtn) {
+      firstChanBtn.click();
+    }
+  });
+
+  window.addEventListener('hashchange', initSectionFromHash);
+</script>
+
+<style>
+  .tg-dash-chan-btn {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #1e293b !important;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+  .tg-dash-chan-btn:hover {
+    color: #0f172a !important;
+    background: #e2e8f0;
+  }
+  .tg-dash-chan-btn.active {
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-color: #d97706;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+  }
+</style>
+{% endblock %}

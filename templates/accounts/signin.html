@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Sign in | Tradex Academy{% endblock %}
+
+{% block body_content %}
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background-color: var(--bg-app);">
+  <div style="width: 100%; max-width: 380px;">
+    <!-- Brand Header -->
+    <div style="margin-bottom: 24px;">
+      <a href="{% url 'courses:landing' %}" class="brand-logo" style="margin-bottom: 16px;">
+        <div class="brand-icon">
+          <i data-lucide="bar-chart-2" style="width: 16px; height: 16px;"></i>
+        </div>
+        <span>TRADEX <span style="color: var(--text-muted); font-weight: 400;">ACADEMY</span></span>
+      </a>
+      <h1 style="font-size: 1.35rem; color: var(--text-primary); margin-bottom: 4px;">Sign in to your account</h1>
+      <p style="color: var(--text-secondary); font-size: 0.8125rem;">Enter your credentials to access the course platform.</p>
+    </div>
+
+    <!-- Sign In Card -->
+    <div class="card" style="padding: 24px;">
+      <form method="POST" action="{% url 'accounts:signin' %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+
+        <div class="form-group">
+          <label class="form-label" for="signin-email-input">Email address</label>
+          {{ form.email }}
+          {% if form.email.errors %}
+            <div class="form-error">{{ form.email.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" for="signin-password-input" style="margin-bottom: 0;">Password</label>
+            <a href="{% url 'accounts:password_reset' %}" style="font-size: 0.75rem; color: var(--text-muted); text-decoration: none;">Forgot password?</a>
+          </div>
+          {{ form.password }}
+          {% if form.password.errors %}
+            <div class="form-error">{{ form.password.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top: 8px;" id="submit-signin-btn">
+          Sign in to dashboard
+        </button>
+      </form>
+
+      <!-- Demo Accounts Box -->
+      <div style="margin-top: 20px; padding: 12px; background-color: var(--bg-sidebar); border-radius: var(--radius-xs); border: 1px solid var(--border-subtle); font-size: 0.75rem;">
+        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; font-size: 0.6875rem;">Test credentials</div>
+        <div style="color: var(--text-secondary);">Subscribed: <code style="color: var(--accent-primary);">pro_trader@example.com</code> / <code style="color: var(--text-primary);">Trader@123</code></div>
+        <div style="color: var(--text-secondary); margin-top: 2px;">Free tier: <code style="color: var(--accent-info);">free_user@example.com</code> / <code style="color: var(--text-primary);">Free@123</code></div>
+      </div>
+    </div>
+
+    <!-- Footer link -->
+    <div style="text-align: center; margin-top: 16px; font-size: 0.8125rem; color: var(--text-muted);">
+      Don't have an account? 
+      <a href="{% url 'accounts:signup' %}" style="color: var(--text-primary); font-weight: 500; margin-left: 4px;">Sign up</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

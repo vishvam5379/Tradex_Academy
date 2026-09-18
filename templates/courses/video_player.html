@@ -1,0 +1,147 @@
+{% extends "dashboard_base.html" %}
+{% load static %}
+
+{% block title %}{{ video.title }} | {{ subcategory.name }} | Tradex{% endblock %}
+{% block header_title %}{{ subcategory.name }} Lesson{% endblock %}
+
+{% block dashboard_css %}
+<link rel="stylesheet" href="{% static 'css/player.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="player-container">
+  <!-- Left Column: Video & Lesson Info -->
+  <div class="player-main-col">
+    <div class="video-frame-box">
+      {% if video.video_file %}
+        <video controls autoplay controlsList="nodownload" poster="{{ video.get_thumbnail_src }}" id="mainLessonPlayer">
+          <source src="{{ video.video_file.url }}" type="video/mp4">
+          Your browser does not support HTML5 video streaming.
+        </video>
+      {% elif video.video_url %}
+        {% if 'youtube.com' in video.video_url or 'youtu.be' in video.video_url %}
+          <iframe src="{{ video.video_url }}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        {% else %}
+          <video controls autoplay controlsList="nodownload" poster="{{ video.get_thumbnail_src }}" id="mainLessonPlayer">
+            <source src="{{ video.video_url }}" type="video/mp4">
+            Your browser does not support video streaming.
+          </video>
+        {% endif %}
+      {% else %}
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-muted); background: #000;">
+          <span>Video stream is processing</span>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Metadata Card -->
+    <div class="player-meta-box">
+      <div class="player-header-row">
+        <div>
+          <div class="player-breadcrumbs">
+            <a href="{% url 'courses:dashboard' %}">Dashboard</a>
+            <span>/</span>
+            <a href="{% url 'courses:category_videos' category.slug subcategory.slug %}">{{ subcategory.name }}</a>
+            <span>/</span>
+            <span style="color: var(--text-primary);">Lesson {{ video.order|default:1 }}</span>
+          </div>
+          <h1 class="player-lesson-title">{{ video.title }}</h1>
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 0.75rem; color: var(--text-muted);">
+            <span class="num">Duration: {{ video.duration_formatted }}</span>
+            <span>&bull;</span>
+            <span>{{ subcategory.name }}</span>
+          </div>
+        </div>
+
+        <div class="player-actions-row">
+          <button class="btn-complete {% if progress.completed %}completed{% endif %}" id="markCompleteBtn" data-video-id="{{ video.id }}">
+            <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+            <span id="completeBtnText">{% if progress.completed %}Completed{% else %}Mark as completed{% endif %}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation buttons -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        {% if prev_video %}
+        <a href="{% url 'courses:video_player' category.slug subcategory.slug prev_video.id %}" class="btn btn-secondary btn-sm" id="prevLessonBtn">
+          <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+          <span>Previous lesson</span>
+        </a>
+        {% else %}
+        <div></div>
+        {% endif %}
+
+        {% if next_video %}
+        <a href="{% url 'courses:video_player' category.slug subcategory.slug next_video.id %}" class="btn btn-primary btn-sm" id="nextLessonBtn">
+          <span>Next lesson</span>
+          <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
+        </a>
+        {% endif %}
+      </div>
+
+      <!-- Description -->
+      <div style="border-top: 1px solid var(--border-subtle); padding-top: 16px;">
+        <h3 style="font-size: 0.9375rem; color: var(--text-primary); margin-bottom: 8px;">Lesson description</h3>
+        <p class="player-lesson-description">{{ video.description }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Playlist Sidebar -->
+  <div class="playlist-sidebar-box">
+    <div class="playlist-header">
+      <div class="playlist-title">{{ subcategory.name }}</div>
+      <div class="playlist-subtext num">{{ playlist_videos.count }} lessons in module</div>
+    </div>
+
+    <ul class="playlist-items-list">
+      {% for item in playlist_videos %}
+      <li class="playlist-item {% if item.id == video.id %}active{% endif %}">
+        <a href="{% url 'courses:video_player' category.slug subcategory.slug item.id %}" class="playlist-item-link">
+          <div class="playlist-index-circle num">{{ forloop.counter }}</div>
+          <div class="playlist-item-meta">
+            <div class="playlist-item-title">{{ item.title }}</div>
+            <div class="playlist-item-duration num">{{ item.duration_formatted }}</div>
+          </div>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const completeBtn = document.getElementById('markCompleteBtn');
+  const completeText = document.getElementById('completeBtnText');
+
+  if (completeBtn) {
+    completeBtn.addEventListener('click', function() {
+      const videoId = this.getAttribute('data-video-id');
+      
+      fetch(`/api/video/${videoId}/complete/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          if (data.completed) {
+            completeBtn.classList.add('completed');
+            completeText.innerText = 'Completed';
+          } else {
+            completeBtn.classList.remove('completed');
+            completeText.innerText = 'Mark as completed';
+          }
+        }
+      })
+      .catch(err => console.error('Error toggling complete:', err));
+    });
+  }
+</script>
+{% endblock %}

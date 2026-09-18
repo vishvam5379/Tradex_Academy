@@ -1,0 +1,101 @@
+{% extends "dashboard_base.html" %}
+{% load static %}
+
+{% block title %}Account profile | Tradex Academy{% endblock %}
+{% block header_title %}Account settings{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px;">
+  <div style="margin-bottom: 24px;">
+    <h1 style="font-size: 1.4rem; color: var(--text-primary); margin-bottom: 4px;">Account profile</h1>
+    <p style="color: var(--text-secondary); font-size: 0.8125rem;">Manage your personal details, credentials, and account security.</p>
+  </div>
+
+  <div class="grid-2" style="align-items: start; gap: 24px;">
+    <!-- Personal Information Card -->
+    <div class="card">
+      <h2 style="font-size: 1.05rem; color: var(--text-primary); margin-bottom: 4px; font-weight: 600;">Personal details</h2>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 16px;">Update your name, email, or phone number.</p>
+
+      <form method="POST" action="{% url 'accounts:profile' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_profile">
+
+        <div class="form-group">
+          <label class="form-label" for="profile-name-input">Full name</label>
+          {{ profile_form.name }}
+          {% if profile_form.name.errors %}
+            <div class="form-error">{{ profile_form.name.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="profile-email-input">Email address</label>
+          {{ profile_form.email }}
+          {% if profile_form.email.errors %}
+            <div class="form-error">{{ profile_form.email.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="profile-phone-input">Phone number</label>
+          {{ profile_form.phone }}
+          {% if profile_form.phone.errors %}
+            <div class="form-error">{{ profile_form.phone.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        {% if user.referral_code %}
+        <div style="margin-bottom: 16px; padding: 8px 12px; background-color: #f9fafb; border: 1px solid var(--border-subtle); border-radius: var(--radius-xs); font-size: 0.75rem; color: var(--text-secondary);">
+          <span>Referral code attached: </span>
+          <code class="num" style="color: var(--accent-primary); font-weight: 600;">{{ user.referral_code }}</code>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary btn-sm">
+          Save changes
+        </button>
+      </form>
+    </div>
+
+    <!-- Security / Change Password Card -->
+    <div class="card">
+      <h2 style="font-size: 1.05rem; color: var(--text-primary); margin-bottom: 4px; font-weight: 600;">Change password</h2>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 16px;">Update your password to keep your account secure.</p>
+
+      <form method="POST" action="{% url 'accounts:profile' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="change_password">
+
+        <div class="form-group">
+          <label class="form-label">Current password</label>
+          {{ password_form.old_password }}
+          {% if password_form.old_password.errors %}
+            <div class="form-error">{{ password_form.old_password.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">New password</label>
+          {{ password_form.new_password1 }}
+          {% if password_form.new_password1.errors %}
+            <div class="form-error">{{ password_form.new_password1.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Confirm new password</label>
+          {{ password_form.new_password2 }}
+          {% if password_form.new_password2.errors %}
+            <div class="form-error">{{ password_form.new_password2.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-secondary btn-sm">
+          Update password
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
