@@ -13,7 +13,20 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-trading-academy-sec
 
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',') if host.strip()]
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost,.vercel.app,*').split(',')
+    if host.strip()
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        'CSRF_TRUSTED_ORIGINS',
+        'https://*.vercel.app,https://*.now.sh,http://127.0.0.1,http://localhost'
+    ).split(',')
+    if origin.strip()
+]
 
 # Application definition
 INSTALLED_APPS = [
@@ -70,11 +83,14 @@ AUTH_USER_MODEL = 'accounts.User'
 # Uses MySQL if USE_SQLITE is False, otherwise SQLite
 USE_SQLITE = os.getenv('USE_SQLITE', 'True').lower() in ('true', '1', 'yes')
 
+IS_VERCEL = 'VERCEL' in os.environ or os.getenv('IS_VERCEL', 'False').lower() in ('true', '1', 'yes')
+
 if USE_SQLITE:
+    db_path = (Path('/tmp') / 'db.sqlite3') if IS_VERCEL else (BASE_DIR / 'db.sqlite3')
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'NAME': db_path,
         }
     }
 else:
@@ -126,6 +142,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+WHITENOISE_USE_FINDERS = True
 
 # Media files (Thumbnails, Video files)
 MEDIA_URL = '/media/'
