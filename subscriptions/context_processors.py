@@ -14,15 +14,18 @@ def subscription_context(request):
     }
 
     if request.user.is_authenticated:
-        active_sub = request.user.active_subscription
-        if active_sub:
-            context['user_has_active_subscription'] = True
-            context['active_subscription'] = active_sub
-        
-        context['user_has_combo_access'] = bool(
-            request.user.is_staff or 
-            request.user.is_superuser or 
-            (active_sub and active_sub.plan_type == 'combo' and active_sub.is_currently_active)
-        )
+        try:
+            active_sub = getattr(request.user, 'active_subscription', None)
+            if active_sub:
+                context['user_has_active_subscription'] = True
+                context['active_subscription'] = active_sub
+            
+            context['user_has_combo_access'] = bool(
+                request.user.is_staff or 
+                request.user.is_superuser or 
+                (active_sub and active_sub.plan_type == 'combo' and active_sub.is_currently_active)
+            )
+        except Exception:
+            pass
 
     return context

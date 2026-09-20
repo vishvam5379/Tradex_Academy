@@ -1,8 +1,16 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-import sys
+# Register PyMySQL as MySQLdb before Django loads the DB backend
+try:
+    import pymysql
+    pymysql.version_info = (2, 2, 1, "final", 0)
+    pymysql.install_as_MySQLdb()
+except Exception:
+    pass
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -15,9 +23,16 @@ load_dotenv(BASE_DIR / '.env')
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-trading-academy-secret-key-change-in-prod-2026!')
 
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['*']
+# Base allowed hosts: always include Vercel domains and local dev
+base_hosts = ['.vercel.app', '.now.sh', 'localhost', '127.0.0.1', '[::1]']
+allowed_hosts_env = os.getenv('ALLOWED_HOSTS')
+if allowed_hosts_env and allowed_hosts_env != '*':
+    ALLOWED_HOSTS = list(set(base_hosts + [h.strip() for h in allowed_hosts_env.split(',') if h.strip()]))
+else:
+    ALLOWED_HOSTS = base_hosts + ['*']
+
 
 CSRF_TRUSTED_ORIGINS = [
     'https://*.vercel.app',
@@ -25,6 +40,9 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1',
     'http://localhost',
 ]
+csrf_origins_env = os.getenv('CSRF_TRUSTED_ORIGINS')
+if csrf_origins_env:
+    CSRF_TRUSTED_ORIGINS.extend([o.strip() for o in csrf_origins_env.split(',') if o.strip()])
 
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -81,32 +99,41 @@ WSGI_APPLICATION = 'academy_core.wsgi.application'
 AUTH_USER_MODEL = 'accounts.User'
 
 # Database Configuration
-# Uses MySQL if USE_SQLITE is False, otherwise SQLite
-USE_SQLITE = os.getenv('USE_SQLITE', 'True').lower() in ('true', '1', 'yes')
-
+# Supports DATABASE_URL (for Supabase/Neon/Railway/TiDB/Aiven) or DB_* env vars or SQLite fallback
 IS_VERCEL = 'VERCEL' in os.environ or os.getenv('IS_VERCEL', 'False').lower() in ('true', '1', 'yes')
 
-if USE_SQLITE:
-    if IS_VERCEL:
-        tmp_db = Path('/tmp/db.sqlite3')
-        base_db = BASE_DIR / 'db.sqlite3'
-        if base_db.exists() and not tmp_db.exists():
-            import shutil
-            try:
-                shutil.copyfile(str(base_db), str(tmp_db))
-            except Exception as e:
-                print(f"Error copying db: {e}")
-        db_path = str(tmp_db)
-    else:
-        db_path = str(BASE_DIR / 'db.sqlite3')
+database_url = os.getenv('DATABASE_URL')
+USE_SQLITE = os.getenv('USE_SQLITE', 'False' if (IS_VERCEL and (database_url or os.getenv('DB_HOST'))) else 'True').lower() in ('true', '1', 'yes')
 
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': db_path,
+if database_url:
+    try:
+        import dj_database_url
+        DATABASES = {
+            'default': dj_database_url.config(
+                default=database_url,
+                conn_max_age=600,
+                conn_health_checks=True,
+            )
         }
+    except Exception as e:
+        print(f"Warning: Failed to parse DATABASE_URL ({e}), falling back to SQLite")
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': str(BASE_DIR / 'db.sqlite3'),
+            }
+        }
+elif not USE_SQLITE:
+    db_options = {
+        'charset': 'utf8mb4',
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
     }
-else:
+    if os.getenv('DB_SSL', 'False').lower() in ('true', '1', 'yes') or os.getenv('DB_SSL_CA'):
+        ssl_config = {}
+        if os.getenv('DB_SSL_CA'):
+            ssl_config['ca'] = os.getenv('DB_SSL_CA')
+        db_options['ssl'] = ssl_config
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -115,10 +142,27 @@ else:
             'PASSWORD': os.getenv('DB_PASSWORD', ''),
             'HOST': os.getenv('DB_HOST', '127.0.0.1'),
             'PORT': os.getenv('DB_PORT', '3306'),
-            'OPTIONS': {
-                'charset': 'utf8mb4',
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            }
+            'OPTIONS': db_options,
+        }
+    }
+else:
+    if IS_VERCEL:
+        tmp_db = Path('/tmp/db.sqlite3')
+        base_db = BASE_DIR / 'db.sqlite3'
+        if not tmp_db.exists() and base_db.exists():
+            try:
+                import shutil
+                shutil.copyfile(str(base_db), str(tmp_db))
+            except Exception as e:
+                print(f"Notice: SQLite copy to /tmp skipped: {e}")
+        db_path = str(tmp_db) if tmp_db.exists() else str(base_db)
+    else:
+        db_path = str(BASE_DIR / 'db.sqlite3')
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': db_path,
         }
     }
 
@@ -156,6 +200,15 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 WHITENOISE_USE_FINDERS = True
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Media files (Thumbnails, Video files)
 MEDIA_URL = '/media/'
