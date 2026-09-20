@@ -21,11 +21,11 @@ if str(BASE_DIR) not in sys.path:
 load_dotenv(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
-_env_secret = (os.getenv('DJANGO_SECRET_KEY') or os.getenv('SECRET_KEY') or '').strip()
-SECRET_KEY = _env_secret if _env_secret else 'django-insecure-trading-academy-secret-key-change-in-prod-2026!'
+# Prioritizes SECRET_KEY, falls back to DJANGO_SECRET_KEY, with a safe development fallback
+_env_secret = (os.getenv('SECRET_KEY') or os.getenv('DJANGO_SECRET_KEY') or '').strip()
+SECRET_KEY = _env_secret if _env_secret else 'django-insecure-dev-fallback-key-change-in-production'
 
-
-DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
+DEBUG = (os.getenv('DJANGO_DEBUG') or os.getenv('DEBUG', 'False')).lower() in ('true', '1', 'yes')
 
 # Base allowed hosts: always include Vercel domains and local dev
 base_hosts = ['.vercel.app', '.now.sh', 'localhost', '127.0.0.1', '[::1]']
@@ -104,8 +104,21 @@ AUTH_USER_MODEL = 'accounts.User'
 # Supports DATABASE_URL (for Supabase/Neon/Railway/TiDB/Aiven) or DB_* env vars or SQLite fallback
 IS_VERCEL = 'VERCEL' in os.environ or os.getenv('IS_VERCEL', 'False').lower() in ('true', '1', 'yes')
 
-database_url = os.getenv('DATABASE_URL')
-USE_SQLITE = os.getenv('USE_SQLITE', 'False' if (IS_VERCEL and (database_url or os.getenv('DB_HOST'))) else 'True').lower() in ('true', '1', 'yes')
+database_url = (os.getenv('DATABASE_URL') or '').strip()
+raw_use_sqlite = os.getenv('USE_SQLITE')
+db_host = (os.getenv('DB_HOST') or '').strip()
+
+# Detect whether a valid remote database host is supplied
+has_remote_db = bool(database_url or (db_host and db_host.lower() not in ('127.0.0.1', 'localhost', '')))
+
+if raw_use_sqlite is not None:
+    USE_SQLITE = raw_use_sqlite.lower() in ('true', '1', 'yes')
+else:
+    USE_SQLITE = not has_remote_db
+
+# On Vercel, MySQL on localhost/127.0.0.1 cannot run; gracefully fall back to SQLite if no remote host is provided
+if IS_VERCEL and not USE_SQLITE and not has_remote_db:
+    USE_SQLITE = True
 
 if database_url:
     try:
@@ -125,7 +138,7 @@ if database_url:
                 'NAME': str(BASE_DIR / 'db.sqlite3'),
             }
         }
-elif not USE_SQLITE:
+elif not USE_SQLITE and has_remote_db:
     db_options = {
         'charset': 'utf8mb4',
         'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
@@ -142,7 +155,7 @@ elif not USE_SQLITE:
             'NAME': os.getenv('DB_NAME', 'trading_academy'),
             'USER': os.getenv('DB_USER', 'root'),
             'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'HOST': os.getenv('DB_HOST', '127.0.0.1'),
+            'HOST': db_host,
             'PORT': os.getenv('DB_PORT', '3306'),
             'OPTIONS': db_options,
         }

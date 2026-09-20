@@ -22,13 +22,17 @@ def user_has_combo_access(user):
 
 def landing_page(request):
     """Public landing page showcasing the academy, curriculum, and subscription plan."""
-    categories = Category.objects.prefetch_related('subcategories__videos').all().order_by('order')
-    total_videos = Video.objects.count()
-    total_subcategories = SubCategory.objects.count()
-    
-    # Feature preview videos
-    preview_videos = Video.objects.filter(is_free_preview=True)[:3]
-    
+    try:
+        categories = Category.objects.prefetch_related('subcategories__videos').all().order_by('order')
+        total_videos = Video.objects.count()
+        total_subcategories = SubCategory.objects.count()
+        preview_videos = Video.objects.filter(is_free_preview=True)[:3]
+    except Exception:
+        categories = []
+        total_videos = 0
+        total_subcategories = 0
+        preview_videos = []
+
     return render(request, 'courses/landing.html', {
         'categories': categories,
         'total_videos': total_videos,
