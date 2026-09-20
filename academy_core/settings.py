@@ -21,7 +21,9 @@ if str(BASE_DIR) not in sys.path:
 load_dotenv(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-trading-academy-secret-key-change-in-prod-2026!')
+_env_secret = (os.getenv('DJANGO_SECRET_KEY') or os.getenv('SECRET_KEY') or '').strip()
+SECRET_KEY = _env_secret if _env_secret else 'django-insecure-trading-academy-secret-key-change-in-prod-2026!'
+
 
 DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 
@@ -233,15 +235,22 @@ MESSAGE_TAGS = {
 }
 
 # Razorpay & Multi-Tier Subscription Configuration
-RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', 'rzp_test_mock_key_id')
-RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', 'mock_secret_key')
-RAZORPAY_CURRENCY = os.getenv('RAZORPAY_CURRENCY', 'INR')
+RAZORPAY_KEY_ID = (os.getenv('RAZORPAY_KEY_ID') or '').strip() or 'rzp_test_mock_key_id'
+RAZORPAY_KEY_SECRET = (os.getenv('RAZORPAY_KEY_SECRET') or '').strip() or 'mock_secret_key'
+RAZORPAY_CURRENCY = (os.getenv('RAZORPAY_CURRENCY') or '').strip() or 'INR'
+
+def _safe_int_env(name, default):
+    val = (os.getenv(name) or '').strip()
+    try:
+        return int(val) if val else default
+    except ValueError:
+        return default
 
 SUBSCRIPTION_PLANS = {
     'standard': {
         'code': 'standard',
         'name': 'Standard Trading Academy',
-        'price': int(os.getenv('PLAN_STANDARD_PRICE', '5000')),
+        'price': _safe_int_env('PLAN_STANDARD_PRICE', 5000),
         'duration_days': 60,
         'description': 'Full access to Indian Market (Futures, Options, Stock Trading) and Spot Gold fundamentals.',
         'badge': 'Standard Pass (2 Months)',
@@ -249,7 +258,7 @@ SUBSCRIPTION_PLANS = {
     'gold_strategy': {
         'code': 'gold_strategy',
         'name': 'Forex Gold Strategy + Strategy Indicator',
-        'price': int(os.getenv('PLAN_GOLD_PRICE', '10000')),
+        'price': _safe_int_env('PLAN_GOLD_PRICE', 10000),
         'duration_days': 60,
         'description': 'Specialized institutional Forex Gold Strategy curriculum based on pure price action plus exclusive proprietary Strategy Indicator.',
         'badge': 'Special Strategy & Indicator (2 Months)',
@@ -257,7 +266,7 @@ SUBSCRIPTION_PLANS = {
     'combo': {
         'code': 'combo',
         'name': 'Combined Master Access (Full Bundle)',
-        'price': int(os.getenv('PLAN_COMBO_PRICE', '12500')),
+        'price': _safe_int_env('PLAN_COMBO_PRICE', 12500),
         'duration_days': 150,  # 5 Months
         'description': 'Complete all-in-one access for 5 months: Includes BOTH ₹5,000 Standard Content and ₹10,000 Forex Gold Strategy & Indicator + VIP Community Access for regular Gold trade setups.',
         'badge': 'Best Value • 5 Months + VIP Community',
