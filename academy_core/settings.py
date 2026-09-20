@@ -101,66 +101,28 @@ WSGI_APPLICATION = 'academy_core.wsgi.application'
 AUTH_USER_MODEL = 'accounts.User'
 
 # Database Configuration
-# Supports DATABASE_URL (for Supabase/Neon/Railway/TiDB/Aiven) or DB_* env vars or SQLite fallback
+# Local Development: USE_SQLITE=True uses SQLite
+# Production: USE_SQLITE=False uses Supabase PostgreSQL (via DB_* env vars or DATABASE_URL)
 IS_VERCEL = 'VERCEL' in os.environ or os.getenv('IS_VERCEL', 'False').lower() in ('true', '1', 'yes')
 
 database_url = (os.getenv('DATABASE_URL') or '').strip()
 raw_use_sqlite = os.getenv('USE_SQLITE')
 db_host = (os.getenv('DB_HOST') or '').strip()
 
-# Detect whether a valid remote database host is supplied
-has_remote_db = bool(database_url or (db_host and db_host.lower() not in ('127.0.0.1', 'localhost', '')))
+# Check if remote database credentials (Supabase) are provided
+has_remote_db = bool(database_url or db_host)
 
 if raw_use_sqlite is not None:
     USE_SQLITE = raw_use_sqlite.lower() in ('true', '1', 'yes')
 else:
+    # If not explicitly specified, use SQLite locally unless a remote DB is configured
     USE_SQLITE = not has_remote_db
 
-# On Vercel, MySQL on localhost/127.0.0.1 cannot run; gracefully fall back to SQLite if no remote host is provided
+# On Vercel, if USE_SQLITE=False was set but no Supabase host was configured, fall back to SQLite to prevent crashing
 if IS_VERCEL and not USE_SQLITE and not has_remote_db:
     USE_SQLITE = True
 
-if database_url:
-    try:
-        import dj_database_url
-        DATABASES = {
-            'default': dj_database_url.config(
-                default=database_url,
-                conn_max_age=600,
-                conn_health_checks=True,
-            )
-        }
-    except Exception as e:
-        print(f"Warning: Failed to parse DATABASE_URL ({e}), falling back to SQLite")
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': str(BASE_DIR / 'db.sqlite3'),
-            }
-        }
-elif not USE_SQLITE and has_remote_db:
-    db_options = {
-        'charset': 'utf8mb4',
-        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-    }
-    if os.getenv('DB_SSL', 'False').lower() in ('true', '1', 'yes') or os.getenv('DB_SSL_CA'):
-        ssl_config = {}
-        if os.getenv('DB_SSL_CA'):
-            ssl_config['ca'] = os.getenv('DB_SSL_CA')
-        db_options['ssl'] = ssl_config
-
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('DB_NAME', 'trading_academy'),
-            'USER': os.getenv('DB_USER', 'root'),
-            'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'HOST': db_host,
-            'PORT': os.getenv('DB_PORT', '3306'),
-            'OPTIONS': db_options,
-        }
-    }
-else:
+if USE_SQLITE:
     if IS_VERCEL:
         tmp_db = Path('/tmp/db.sqlite3')
         base_db = BASE_DIR / 'db.sqlite3'
@@ -180,6 +142,44 @@ else:
             'NAME': db_path,
         }
     }
+elif database_url:
+    try:
+        import dj_database_url
+        DATABASES = {
+            'default': dj_database_url.config(
+                default=database_url,
+                conn_max_age=600,
+                conn_health_checks=True,
+                ssl_require=True,
+            )
+        }
+        # Ensure sslmode is required for Supabase
+        DATABASES['default'].setdefault('OPTIONS', {})['sslmode'] = 'require'
+    except Exception as e:
+        print(f"Warning: Failed to parse DATABASE_URL ({e}), falling back to SQLite")
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': str(BASE_DIR / 'db.sqlite3'),
+            }
+        }
+else:
+    # Supabase PostgreSQL via individual environment variables
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'postgres'),
+            'USER': os.getenv('DB_USER', 'postgres'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': db_host,
+            'PORT': os.getenv('DB_PORT', '5432'),
+            'OPTIONS': {
+                'sslmode': 'require',
+            },
+        }
+    }
+
+
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
