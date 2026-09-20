@@ -27,8 +27,8 @@ SECRET_KEY = _env_secret if _env_secret else 'django-insecure-dev-fallback-key-c
 
 DEBUG = (os.getenv('DJANGO_DEBUG') or os.getenv('DEBUG', 'False')).lower() in ('true', '1', 'yes')
 
-# Base allowed hosts: always include Vercel domains and local dev
-base_hosts = ['.vercel.app', '.now.sh', 'localhost', '127.0.0.1', '[::1]']
+# Base allowed hosts: always include Vercel domains, local dev, and test runner
+base_hosts = ['.vercel.app', '.now.sh', 'localhost', '127.0.0.1', '[::1]', 'testserver']
 allowed_hosts_env = os.getenv('ALLOWED_HOSTS')
 if allowed_hosts_env and allowed_hosts_env != '*':
     ALLOWED_HOSTS = list(set(base_hosts + [h.strip() for h in allowed_hosts_env.split(',') if h.strip()]))
@@ -290,4 +290,9 @@ SUBSCRIPTION_PLANS = {
 
 SUBSCRIPTION_PRICE = SUBSCRIPTION_PLANS['standard']['price']
 SUBSCRIPTION_DURATION_DAYS = 60
+
+# Google OAuth 2.0 Settings
+GOOGLE_CLIENT_ID = (os.getenv('GOOGLE_CLIENT_ID') or '').strip()
+GOOGLE_CLIENT_SECRET = (os.getenv('GOOGLE_CLIENT_SECRET') or '').strip()
+GOOGLE_REDIRECT_URI = (os.getenv('GOOGLE_REDIRECT_URI') or '').strip()
 
