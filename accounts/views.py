@@ -143,10 +143,14 @@ def google_login_view(request):
     state = secrets.token_urlsafe(32)
     request.session['google_oauth_state'] = state
 
-    # Capture 'next' redirect parameter if safe
+    # Capture 'next' and 'plan' parameters
     next_url = request.GET.get('next')
     if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
         request.session['google_oauth_next'] = next_url
+
+    plan = request.GET.get('plan')
+    if plan:
+        request.session['google_oauth_plan'] = plan
 
     # Determine redirect URI (allow settings override or auto-detect from request)
     override_redirect = getattr(settings, 'GOOGLE_REDIRECT_URI', '').strip()
@@ -154,6 +158,10 @@ def google_login_view(request):
         redirect_uri = override_redirect
     else:
         redirect_uri = request.build_absolute_uri(reverse('accounts:google_callback'))
+        # Fix protocol on Vercel or when behind SSL proxy
+        if (getattr(settings, 'IS_VERCEL', False) or request.is_secure()) and redirect_uri.startswith('http://'):
+            redirect_uri = 'https://' + redirect_uri[7:]
+
     request.session['google_oauth_redirect_uri'] = redirect_uri
     request.session.modified = True
 
@@ -197,6 +205,8 @@ def google_callback_view(request):
     client_secret = getattr(settings, 'GOOGLE_CLIENT_SECRET', '').strip()
     saved_redirect = request.session.pop('google_oauth_redirect_uri', None)
     redirect_uri = saved_redirect or getattr(settings, 'GOOGLE_REDIRECT_URI', '').strip() or request.build_absolute_uri(reverse('accounts:google_callback'))
+    if (getattr(settings, 'IS_VERCEL', False) or request.is_secure()) and redirect_uri.startswith('http://'):
+        redirect_uri = 'https://' + redirect_uri[7:]
 
     # Exchange authorization code for tokens
     token_payload = {
@@ -281,5 +291,10 @@ def google_callback_view(request):
     else:
         messages.success(request, f"Welcome back, {user.name}!")
 
-    next_url = request.session.pop('google_oauth_next', None) or 'courses:dashboard'
-    return redirect(next_url)
+    plan = request.session.pop('google_oauth_plan', None)
+    next_url = request.session.pop('google_oauth_next', None)
+    if plan:
+        return redirect(f"/subscriptions/checkout/?plan={plan}")
+    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+        return redirect(next_url)
+    return redirect('courses:dashboard')

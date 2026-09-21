@@ -4,7 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from academy_core.views import health_check
-from allauth.socialaccount.providers.google import views as google_views
+from accounts import views as accounts_views
 
 urlpatterns = [
     path('healthz/', health_check, name='health_check'),
@@ -14,11 +14,10 @@ urlpatterns = [
     # and /logout/ are not swallowed by django-allauth's own views.
     path('accounts/', include('accounts.urls', namespace='accounts')),
 
-    # Keep the previous Google callback path working with credentials already
-    # registered in Google Cloud as /accounts/google/callback/.
-    path('accounts/google/login/', google_views.oauth2_login, name='google_login'),
-    path('accounts/google/callback/', google_views.oauth2_callback, name='google_callback'),
-    path('accounts/google/login/callback/', google_views.oauth2_callback, name='google_callback_allauth'),
+    # Google OAuth 2.0 endpoints matching credentials registered in Google Cloud
+    path('accounts/google/login/', accounts_views.google_login_view, name='google_login'),
+    path('accounts/google/callback/', accounts_views.google_callback_view, name='google_callback'),
+    path('accounts/google/login/callback/', accounts_views.google_callback_view, name='google_callback_allauth'),
 
     path('accounts/', include('allauth.urls')),
     path('subscriptions/', include('subscriptions.urls', namespace='subscriptions')),
