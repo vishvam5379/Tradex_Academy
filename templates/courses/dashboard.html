@@ -27,6 +27,66 @@
   </div>
   {% endif %}
 
+  <!-- In-App Notification Banners -->
+  {% for n in user_notifications %}
+    {% if n.notification_type == 'payment_approved' %}
+    <div class="card" id="approvedNotificationBanner-{{ n.id }}" style="padding: 18px 24px; background: linear-gradient(135deg, rgba(20, 83, 45, 0.95), rgba(15, 23, 42, 0.98)); border: 2px solid #22c55e; border-radius: 12px; box-shadow: 0 8px 30px rgba(34, 197, 94, 0.25);">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 44px; height: 44px; background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.5); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+            🎉
+          </div>
+          <div>
+            <h3 style="margin: 0 0 3px 0; font-size: 1.05rem; color: #4ade80; font-weight: 700;">
+              {{ n.title }}
+            </h3>
+            <p style="margin: 0; font-size: 0.85rem; color: #e2e8f0; line-height: 1.4;">
+              {{ n.message }}
+            </p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <a href="#my-courses" class="btn btn-sm btn-primary" onclick="switchDashboardSection('my-courses')" style="background: #22c55e; border-color: #16a34a; font-weight: 700; color: #ffffff;">
+            Watch Courses Now &rarr;
+          </a>
+          <button onclick="markNotificationRead({{ n.id }}); document.getElementById('approvedNotificationBanner-{{ n.id }}').remove();" style="background: transparent; border: 1px solid rgba(255, 255, 255, 0.2); color: #94a3b8; border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; cursor: pointer;">
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
+
+  <!-- Pending Manual Payment Banner -->
+  {% if pending_manual_payment %}
+  <div class="card" style="padding: 18px 24px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(250, 204, 21, 0.4); border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="width: 40px; height: 40px; background: rgba(250, 204, 21, 0.15); border: 1px solid rgba(250, 204, 21, 0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+          ⏳
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+            <h4 style="margin: 0; font-size: 0.95rem; color: #facc15; font-weight: 700;">
+              Payment Verification Pending (UTR: {{ pending_manual_payment.utr }})
+            </h4>
+            <span class="badge" style="background: rgba(250, 204, 21, 0.2); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.4); font-size: 0.6875rem;">
+              UNDER REVIEW
+            </span>
+          </div>
+          <p style="margin: 0; font-size: 0.8125rem; color: #cbd5e1;">
+            We received your submission of ₹{{ pending_manual_payment.amount|floatformat:0 }} for <strong>{{ pending_manual_payment.plan_name }}</strong>. Our team is verifying your payment with the bank. Once confirmed, all course videos will be unlocked automatically!
+          </p>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="switchDashboardSection('payment-history')" style="color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.15); font-size: 0.75rem;">
+        View Status in Payment History &rarr;
+      </button>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- User Welcome Top Header Bar -->
   <div class="card" style="padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px;">
     <div>
@@ -455,23 +515,56 @@
       <h2 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px;">
         <span>💰</span> Payment History
       </h2>
-      <span class="badge badge-gray num" style="font-size: 0.75rem;">{{ all_payments.count }} Transaction(s)</span>
+      <span class="badge badge-gray num" style="font-size: 0.75rem;">
+        {% with total=all_payments.count|add:manual_payments.count %}
+        {{ total }} Transaction(s)
+        {% endwith %}
+      </span>
     </div>
 
     <div class="card" style="padding: 0; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-      {% if all_payments %}
+      {% if all_payments or manual_payments %}
       <div style="overflow-x: auto;">
         <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
           <thead>
             <tr style="background-color: rgba(15, 23, 42, 0.8); border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #94a3b8; font-size: 0.75rem; text-transform: uppercase;">
               <th style="padding: 14px 18px;">Date & Time</th>
-              <th style="padding: 14px 18px;">Plan Purchased</th>
+              <th style="padding: 14px 18px;">Plan</th>
               <th style="padding: 14px 18px;">Amount</th>
-              <th style="padding: 14px 18px;">Payment / Order ID</th>
+              <th style="padding: 14px 18px;">Payment / Reference</th>
+              <th style="padding: 14px 18px;">Channel</th>
               <th style="padding: 14px 18px;">Status</th>
             </tr>
           </thead>
           <tbody class="num">
+            {% for mp in manual_payments %}
+            <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #ffffff;">
+              <td style="padding: 14px 18px; color: #cbd5e1;">
+                {{ mp.created_at|date:"d M Y, H:i" }}
+              </td>
+              <td style="padding: 14px 18px; font-weight: 600; color: #ffffff;">
+                {{ mp.plan_name }}
+              </td>
+              <td style="padding: 14px 18px; font-weight: 700; color: #38bdf8;">
+                ₹{{ mp.amount|floatformat:0 }}
+              </td>
+              <td style="padding: 14px 18px; font-family: monospace; font-size: 0.78125rem; color: #cbd5e1;">
+                UTR: {{ mp.utr }}
+              </td>
+              <td style="padding: 14px 18px;">
+                <span class="badge badge-gray" style="font-size: 0.6875rem;">Direct UPI</span>
+              </td>
+              <td style="padding: 14px 18px;">
+                {% if mp.status == 'approved' %}
+                  <span class="badge badge-green" style="font-size: 0.6875rem;">APPROVED ✓</span>
+                {% elif mp.status == 'pending' %}
+                  <span class="badge" style="background: rgba(250, 204, 21, 0.2); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.4); font-size: 0.6875rem;">PENDING REVIEW</span>
+                {% elif mp.status == 'rejected' %}
+                  <span class="badge badge-red" style="font-size: 0.6875rem;" title="{{ mp.reject_reason|default:'Rejected' }}">REJECTED</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
             {% for sub in all_payments %}
             <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #ffffff;">
               <td style="padding: 14px 18px; color: #cbd5e1;">
@@ -485,6 +578,9 @@
               </td>
               <td style="padding: 14px 18px; font-family: monospace; font-size: 0.78125rem; color: #cbd5e1;">
                 {{ sub.razorpay_payment_id|default:sub.razorpay_order_id|default:"Activated" }}
+              </td>
+              <td style="padding: 14px 18px;">
+                <span class="badge badge-gray" style="font-size: 0.6875rem;">Gateway</span>
               </td>
               <td style="padding: 14px 18px;">
                 {% if sub.status == 'ACTIVE' %}

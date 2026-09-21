@@ -176,6 +176,58 @@
         </a>
         {% endif %}
 
+        <!-- Notification Bell Dropdown -->
+        <div class="notification-dropdown-wrap" style="position: relative;">
+          <button 
+            type="button" 
+            id="notificationBellBtn" 
+            onclick="toggleNotificationDropdown()"
+            aria-label="Notifications"
+            style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-subtle); color: var(--text-primary); border-radius: 8px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: all 0.2s ease;"
+            title="Notifications"
+          >
+            <i data-lucide="bell" style="width: 16px; height: 16px;"></i>
+            {% if unread_notifications_count > 0 %}
+            <span style="position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 8px #22c55e;"></span>
+            {% endif %}
+          </button>
+
+          <!-- Notification Menu -->
+          <div id="notificationMenu" style="display: none; position: absolute; right: 0; top: 42px; width: 320px; background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1000; overflow: hidden;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: rgba(30, 41, 59, 0.7);">
+              <span style="font-size: 0.8125rem; font-weight: 700; color: #ffffff;">Notifications</span>
+              {% if unread_notifications_count > 0 %}
+              <button onclick="markAllNotificationsRead()" style="background: none; border: none; font-size: 0.72rem; color: #38bdf8; cursor: pointer; text-decoration: underline;">
+                Mark all read
+              </button>
+              {% endif %}
+            </div>
+            <div style="max-height: 280px; overflow-y: auto;">
+              {% if user_notifications %}
+                {% for n in user_notifications %}
+                <div id="notification-item-{{ n.id }}" style="padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 0.8125rem;">
+                  <div style="font-weight: 600; color: {% if n.notification_type == 'payment_approved' %}#4ade80{% elif n.notification_type == 'payment_rejected' %}#f87171{% else %}#ffffff{% endif %}; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>{{ n.title }}</span>
+                    <button onclick="markNotificationRead({{ n.id }})" style="background: none; border: none; color: #94a3b8; font-size: 0.9rem; cursor: pointer; padding: 0 4px;" title="Dismiss">&times;</button>
+                  </div>
+                  <p style="margin: 0; color: #cbd5e1; font-size: 0.75rem; line-height: 1.35;">{{ n.message }}</p>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                    <span style="font-size: 0.6875rem; color: #64748b;">{{ n.created_at|timesince }} ago</span>
+                    {% if n.link %}
+                    <a href="{{ n.link }}" style="font-size: 0.72rem; color: #38bdf8; text-decoration: none; font-weight: 600;">View &rarr;</a>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+                <div style="padding: 24px 16px; text-align: center; color: #94a3b8; font-size: 0.8125rem;">
+                  No new notifications.
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
         <!-- User Badge linking to profile -->
         <a href="{% url 'accounts:profile' %}" class="user-profile-badge" style="text-decoration: none;" title="View account profile">
           <div class="user-avatar">
@@ -195,4 +247,61 @@
     </main>
   </div>
 </div>
+
+<script>
+  function toggleNotificationDropdown() {
+    const menu = document.getElementById('notificationMenu');
+    if (menu) {
+      menu.style.display = (menu.style.display === 'none' || menu.style.display === '') ? 'block' : 'none';
+    }
+  }
+
+  document.addEventListener('click', function(e) {
+    const wrap = document.querySelector('.notification-dropdown-wrap');
+    const menu = document.getElementById('notificationMenu');
+    if (wrap && menu && !wrap.contains(e.target)) {
+      menu.style.display = 'none';
+    }
+  });
+
+  function getCsrfToken() {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, 10) === 'csrftoken=') {
+          cookieValue = decodeURIComponent(cookie.substring(10));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function markNotificationRead(id) {
+    fetch('/subscriptions/notifications/' + id + '/read/', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCsrfToken(),
+        'Content-Type': 'application/json'
+      }
+    }).then(res => res.json()).then(data => {
+      const el = document.getElementById('notification-item-' + id);
+      if (el) el.remove();
+    });
+  }
+
+  function markAllNotificationsRead() {
+    fetch('/subscriptions/notifications/read-all/', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCsrfToken(),
+        'Content-Type': 'application/json'
+      }
+    }).then(res => res.json()).then(data => {
+      location.reload();
+    });
+  }
+</script>
 {% endblock %}

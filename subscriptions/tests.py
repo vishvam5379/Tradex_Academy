@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
@@ -8,7 +8,7 @@ import json
 import hmac
 import hashlib
 
-from subscriptions.models import Subscription, Order, ManualPayment
+from subscriptions.models import Subscription, Order, ManualPayment, UserNotification
 from courses.models import Category, SubCategory, Video
 
 User = get_user_model()
@@ -49,6 +49,7 @@ class SubscriptionsTests(TestCase):
         self.assertFalse(self.user.has_active_subscription)
         self.assertEqual(self.user.subscription_days_remaining, 0)
 
+    @override_settings(PAYMENT_MODE='razorpay')
     def test_initiate_upi_payment_creates_order_and_redirects(self):
         self.client.login(email='subscriber@test.com', password='Password123')
         response = self.client.get(reverse('subscriptions:initiate_upi_payment_plan', args=['starter']))
@@ -60,6 +61,7 @@ class SubscriptionsTests(TestCase):
         self.assertEqual(order.currency, 'INR')
         self.assertEqual(order.status, 'created')
 
+    @override_settings(PAYMENT_MODE='razorpay')
     def test_initiate_upi_payment_blocks_duplicate_active_subscription(self):
         self.client.login(email='subscriber@test.com', password='Password123')
         # Create active subscription for starter
@@ -375,11 +377,34 @@ class ManualUPITests(TestCase):
             self.assertEqual(sub.plan_type, 'starter')
             self.assertTrue(sub.is_currently_active)
 
+            # Notification created for user
+            notif = UserNotification.objects.filter(user=self.user, notification_type='payment_approved').first()
+            self.assertIsNotNone(notif)
+            self.assertIn('Payment Confirmed', notif.title)
+            self.assertFalse(notif.is_read)
+
             # Idempotent: approve again should not double extend
             end_date_before = sub.end_date
             self.client.post(approve_url)
             sub.refresh_from_db()
             self.assertEqual(sub.end_date, end_date_before)
+
+    def test_admin_payment_approval_with_unlock_all(self):
+        payment = ManualPayment.objects.create(
+            user=self.user,
+            plan_key='starter',
+            amount=3999.00,
+            status='pending',
+            utr='112233445566'
+        )
+        approve_url = reverse('subscriptions:admin_payment_approve', args=[payment.id])
+        self.client.login(email='admin@tradex.com', password='Password123')
+        with self.settings(ADMIN_EMAILS='admin@tradex.com'):
+            res = self.client.post(approve_url, {'unlock_all': 'true'})
+            self.assertRedirects(res, reverse('subscriptions:admin_payments'))
+            sub = Subscription.objects.filter(user=self.user, status='ACTIVE').first()
+            self.assertIsNotNone(sub)
+            self.assertEqual(sub.plan_type, 'combo')
 
     def test_admin_payment_rejection_flow(self):
         payment = ManualPayment.objects.create(
@@ -406,6 +431,11 @@ class ManualUPITests(TestCase):
             # User receives no subscription
             self.assertEqual(Subscription.objects.filter(user=self.user).count(), 0)
 
+            # Rejection notification created
+            notif = UserNotification.objects.filter(user=self.user, notification_type='payment_rejected').first()
+            self.assertIsNotNone(notif)
+            self.assertIn('Verification Notice', notif.title)
+
     def test_payment_mode_routing_to_manual_checkout(self):
         self.client.login(email='student@test.com', password='Password123')
         with self.settings(PAYMENT_MODE='manual_upi'):
@@ -414,5 +444,27 @@ class ManualUPITests(TestCase):
 
             res_checkout = self.client.get(reverse('subscriptions:checkout') + '?plan=starter')
             self.assertRedirects(res_checkout, reverse('subscriptions:manual_checkout', args=['starter']))
+
+    def test_notification_read_api(self):
+        notif = UserNotification.objects.create(
+            user=self.user,
+            title='Test Alert',
+            message='Test message content',
+            is_read=False
+        )
+        self.client.login(email=self.user.email, password='Password123')
+        read_url = reverse('subscriptions:mark_notification_read', args=[notif.id])
+        res = self.client.post(read_url)
+        self.assertEqual(res.status_code, 200)
+        notif.refresh_from_db()
+        self.assertTrue(notif.is_read)
+
+        # Mark all read
+        notif2 = UserNotification.objects.create(user=self.user, title='Alert 2', message='Msg 2', is_read=False)
+        read_all_url = reverse('subscriptions:mark_all_notifications_read')
+        res_all = self.client.post(read_all_url)
+        self.assertEqual(res_all.status_code, 200)
+        notif2.refresh_from_db()
+        self.assertTrue(notif2.is_read)
 
 

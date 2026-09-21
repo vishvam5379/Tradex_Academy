@@ -82,9 +82,22 @@
       <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); margin-top: 10px; margin-bottom: 4px;">
         Complete Your UPI Payment
       </h1>
-      <p style="color: var(--text-secondary); font-size: 0.875rem;">
+      <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 12px;">
         Scan the QR code with any UPI app (GPay, PhonePe, Paytm, BHIM) or tap the button on mobile.
       </p>
+
+      <!-- Quick Plan Switcher -->
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+        <a href="{% url 'subscriptions:manual_checkout' 'starter' %}" class="btn btn-sm {% if plan_code == 'starter' %}btn-primary{% else %}btn-ghost{% endif %}" style="border-radius: 20px; font-size: 0.8125rem; text-decoration: none;">
+          Indian Market (₹3,999)
+        </a>
+        <a href="{% url 'subscriptions:manual_checkout' 'pro' %}" class="btn btn-sm {% if plan_code == 'pro' %}btn-primary{% else %}btn-ghost{% endif %}" style="border-radius: 20px; font-size: 0.8125rem; text-decoration: none;">
+          Forex Gold (₹9,999)
+        </a>
+        <a href="{% url 'subscriptions:manual_checkout' 'elite' %}" class="btn btn-sm {% if plan_code == 'elite' %}btn-primary{% else %}btn-ghost{% endif %}" style="border-radius: 20px; font-size: 0.8125rem; text-decoration: none; {% if plan_code == 'elite' %}background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: #ffffff; font-weight: 700;{% endif %}">
+          ⭐ Complete Trader (₹11,999 &bull; All Videos)
+        </a>
+      </div>
     </div>
 
     <div class="manual-checkout-grid">
@@ -129,16 +142,25 @@
         </div>
 
         <!-- Payee Details & Copy Chip -->
-        <div style="margin-top: 20px; padding: 14px; background: rgba(0, 0, 0, 0.2); border-radius: 8px; text-align: left; font-size: 0.8125rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="color: var(--text-muted);">UPI ID:</span>
-            <span class="copy-chip" onclick="copyText('{{ upi_id }}', this)" title="Click to copy">
-              <span>{{ upi_id }}</span>
-              <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+        <div style="margin-top: 20px; padding: 16px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; text-align: left; font-size: 0.8125rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="color: var(--text-muted); font-weight: 500;">UPI ID:</span>
+            <span class="copy-chip" onclick="copyText('{{ upi_id }}', this)" title="Click to copy UPI ID">
+              <span style="font-weight: 600; color: #38bdf8;">{{ upi_id }}</span>
+              <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
             </span>
           </div>
+          {% if upi_phone %}
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="color: var(--text-muted); font-weight: 500;">UPI / Phone:</span>
+            <span class="copy-chip" onclick="copyText('{{ upi_phone }}', this)" title="Click to copy Phone Number">
+              <span style="font-weight: 600; color: #38bdf8;">{{ upi_phone }}</span>
+              <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
+            </span>
+          </div>
+          {% endif %}
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: var(--text-muted);">Payee Name:</span>
+            <span style="color: var(--text-muted); font-weight: 500;">Payee Name:</span>
             <span style="color: var(--text-primary); font-weight: 600;">{{ payee_name }}</span>
           </div>
         </div>

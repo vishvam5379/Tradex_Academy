@@ -14,9 +14,10 @@ except ImportError:
 
 def get_upi_config():
     """Retrieve UPI payee configuration from environment or settings."""
-    upi_id = os.getenv('MANUAL_UPI_ID') or getattr(settings, 'MANUAL_UPI_ID', '[MY UPI ID]')
+    upi_id = os.getenv('MANUAL_UPI_ID') or getattr(settings, 'MANUAL_UPI_ID', '9313858614@ibl')
     payee_name = os.getenv('MANUAL_UPI_NAME') or getattr(settings, 'MANUAL_UPI_NAME', 'Tradex Academy')
-    return upi_id.strip(), payee_name.strip()
+    upi_phone = os.getenv('MANUAL_UPI_PHONE') or getattr(settings, 'MANUAL_UPI_PHONE', '9313858614')
+    return upi_id.strip(), payee_name.strip(), upi_phone.strip()
 
 
 def generate_upi_deep_link(upi_id, payee_name, amount, plan_key, user_id):

@@ -4,13 +4,14 @@ from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-from django.http import Http404, HttpResponseBadRequest
+from django.http import Http404, HttpResponseBadRequest, JsonResponse
 from django.contrib import messages
 from django.utils import timezone
 from django.conf import settings
 from django.db import transaction
+from django.core.mail import send_mail
 
-from .models import Subscription, ManualPayment
+from .models import Subscription, ManualPayment, UserNotification
 from .manual_upi_utils import (
     get_upi_config,
     generate_upi_deep_link,
@@ -49,8 +50,9 @@ def manual_checkout_view(request, plan_key):
     Manual UPI Checkout page:
     1. Shows plan details (name, price, validity).
     2. Displays UPI QR code and 'Pay with UPI App' deep link button.
-    3. Handles submission of 12-digit UTR, optional screenshot, and payer UPI ID.
-    4. Enforces duplicate check and rate limits.
+    3. Displays UPI ID and Phone Number with click-to-copy chips.
+    4. Handles submission of 12-digit UTR, optional screenshot, and payer UPI ID.
+    5. Enforces duplicate check and rate limits.
     """
     plan_code = normalize_plan_key(plan_key)
     plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
@@ -81,7 +83,7 @@ def manual_checkout_view(request, plan_key):
         )
         return redirect('courses:dashboard')
 
-    upi_id, payee_name = get_upi_config()
+    upi_id, payee_name, upi_phone = get_upi_config()
     upi_deep_link = generate_upi_deep_link(
         upi_id=upi_id,
         payee_name=payee_name,
@@ -90,6 +92,18 @@ def manual_checkout_view(request, plan_key):
         user_id=request.user.id
     )
     qr_data_uri = generate_upi_qr_data_uri(upi_deep_link)
+
+    base_context = {
+        'plan_code': plan_code,
+        'plan_name': plan_name,
+        'price': price,
+        'validity_days': validity_days,
+        'upi_id': upi_id,
+        'payee_name': payee_name,
+        'upi_phone': upi_phone,
+        'upi_deep_link': upi_deep_link,
+        'qr_data_uri': qr_data_uri,
+    }
 
     if request.method == 'POST':
         # Rate limit: Max 5 submissions per user per hour
@@ -109,34 +123,16 @@ def manual_checkout_view(request, plan_key):
         clean_utr = re.sub(r'\s+', '', raw_utr)
         if not re.match(r'^\d{12}$', clean_utr):
             messages.error(request, "Please enter a valid 12-digit UPI transaction reference / UTR number.")
-            return render(request, 'subscriptions/manual_checkout.html', {
-                'plan_code': plan_code,
-                'plan_name': plan_name,
-                'price': price,
-                'validity_days': validity_days,
-                'upi_id': upi_id,
-                'payee_name': payee_name,
-                'upi_deep_link': upi_deep_link,
-                'qr_data_uri': qr_data_uri,
-                'entered_utr': raw_utr,
-                'entered_payer_upi': payer_upi_id,
-            })
+            context = dict(base_context)
+            context.update({'entered_utr': raw_utr, 'entered_payer_upi': payer_upi_id})
+            return render(request, 'subscriptions/manual_checkout.html', context)
 
         # Enforce unique constraint
         if ManualPayment.objects.filter(utr=clean_utr).exists():
             messages.error(request, "This UTR / transaction reference has already been submitted.")
-            return render(request, 'subscriptions/manual_checkout.html', {
-                'plan_code': plan_code,
-                'plan_name': plan_name,
-                'price': price,
-                'validity_days': validity_days,
-                'upi_id': upi_id,
-                'payee_name': payee_name,
-                'upi_deep_link': upi_deep_link,
-                'qr_data_uri': qr_data_uri,
-                'entered_utr': raw_utr,
-                'entered_payer_upi': payer_upi_id,
-            })
+            context = dict(base_context)
+            context.update({'entered_utr': raw_utr, 'entered_payer_upi': payer_upi_id})
+            return render(request, 'subscriptions/manual_checkout.html', context)
 
         # Handle optional screenshot upload (JPG/PNG/WEBP, max 2MB)
         screenshot_path = None
@@ -144,34 +140,16 @@ def manual_checkout_view(request, plan_key):
             file_obj = request.FILES['screenshot']
             if file_obj.size > 2 * 1024 * 1024:
                 messages.error(request, "Payment screenshot must be smaller than 2 MB.")
-                return render(request, 'subscriptions/manual_checkout.html', {
-                    'plan_code': plan_code,
-                    'plan_name': plan_name,
-                    'price': price,
-                    'validity_days': validity_days,
-                    'upi_id': upi_id,
-                    'payee_name': payee_name,
-                    'upi_deep_link': upi_deep_link,
-                    'qr_data_uri': qr_data_uri,
-                    'entered_utr': raw_utr,
-                    'entered_payer_upi': payer_upi_id,
-                })
+                context = dict(base_context)
+                context.update({'entered_utr': raw_utr, 'entered_payer_upi': payer_upi_id})
+                return render(request, 'subscriptions/manual_checkout.html', context)
 
             ext = os.path.splitext(file_obj.name)[1].lower()
             if ext not in ['.jpg', '.jpeg', '.png', '.webp']:
                 messages.error(request, "Only JPG, PNG, or WEBP image formats are supported for screenshot.")
-                return render(request, 'subscriptions/manual_checkout.html', {
-                    'plan_code': plan_code,
-                    'plan_name': plan_name,
-                    'price': price,
-                    'validity_days': validity_days,
-                    'upi_id': upi_id,
-                    'payee_name': payee_name,
-                    'upi_deep_link': upi_deep_link,
-                    'qr_data_uri': qr_data_uri,
-                    'entered_utr': raw_utr,
-                    'entered_payer_upi': payer_upi_id,
-                })
+                context = dict(base_context)
+                context.update({'entered_utr': raw_utr, 'entered_payer_upi': payer_upi_id})
+                return render(request, 'subscriptions/manual_checkout.html', context)
 
             timestamp_str = int(timezone.now().timestamp())
             target_filename = f"user_{request.user.id}_{clean_utr}_{timestamp_str}{ext}"
@@ -196,16 +174,7 @@ def manual_checkout_view(request, plan_key):
         )
         return redirect('courses:dashboard')
 
-    return render(request, 'subscriptions/manual_checkout.html', {
-        'plan_code': plan_code,
-        'plan_name': plan_name,
-        'price': price,
-        'validity_days': validity_days,
-        'upi_id': upi_id,
-        'payee_name': payee_name,
-        'upi_deep_link': upi_deep_link,
-        'qr_data_uri': qr_data_uri,
-    })
+    return render(request, 'subscriptions/manual_checkout.html', base_context)
 
 
 @login_required
@@ -254,6 +223,7 @@ def admin_payment_approve_view(request, payment_id):
     """
     Approve manual payment, set reviewed_at and reviewed_by, and create or extend subscription.
     Idempotent: approving twice does not double-extend.
+    Unlocks all course videos for the subscriber and sends instant confirmation notification.
     """
     if not is_admin_email(request.user):
         raise Http404("Page not found")
@@ -267,14 +237,21 @@ def admin_payment_approve_view(request, payment_id):
             return redirect('subscriptions:admin_payments')
 
         plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
-        plan_info = plans.get(payment.plan_key, plans.get('starter'))
-        duration_days = plan_info['duration_days']
+        plan_info = plans.get(payment.plan_key, plans.get('starter', {'name': 'Subscription', 'duration_days': 90}))
+        duration_days = plan_info.get('duration_days', 90)
         now = timezone.now()
+
+        # Unlock all videos / complete access if requested or if elite/combo
+        unlock_all = request.POST.get('unlock_all')
+        is_unlock_all = unlock_all.lower() in ('true', '1', 'yes') if unlock_all is not None else False
+        assigned_plan_key = 'combo' if (is_unlock_all or payment.plan_key in ['elite', 'combo']) else payment.plan_key
+        assigned_plan_name = 'Complete Trader (All Videos Unlocked)' if assigned_plan_key == 'combo' else plan_info.get('name', assigned_plan_key.title())
 
         payment.status = 'approved'
         payment.reviewed_at = now
         payment.reviewed_by = request.user
-        payment.save(update_fields=['status', 'reviewed_at', 'reviewed_by'])
+        payment.user_notified = False
+        payment.save(update_fields=['status', 'reviewed_at', 'reviewed_by', 'user_notified'])
 
         # Activate or extend subscription
         # If user has an active subscription, extend from its current end_date
@@ -286,17 +263,16 @@ def admin_payment_approve_view(request, payment_id):
 
         if existing_sub:
             existing_sub.end_date = existing_sub.end_date + timedelta(days=duration_days)
-            # If newly approved plan is higher tier, update plan_type
-            if payment.plan_key in ['elite', 'combo'] or existing_sub.plan_type in ['starter', 'standard']:
-                existing_sub.plan_type = payment.plan_key
-                existing_sub.plan_name = plan_info['name']
+            if assigned_plan_key in ['elite', 'combo'] or existing_sub.plan_type in ['starter', 'standard']:
+                existing_sub.plan_type = assigned_plan_key
+                existing_sub.plan_name = assigned_plan_name
             existing_sub.amount_paid = (existing_sub.amount_paid or 0) + payment.amount
             existing_sub.save()
         else:
             Subscription.objects.create(
                 user=payment.user,
-                plan_type=payment.plan_key,
-                plan_name=plan_info['name'],
+                plan_type=assigned_plan_key,
+                plan_name=assigned_plan_name,
                 amount_paid=payment.amount,
                 currency='INR',
                 start_date=now,
@@ -307,9 +283,44 @@ def admin_payment_approve_view(request, payment_id):
                 razorpay_signature='manual_approved'
             )
 
+        # Create instant UserNotification for the subscriber
+        notification_title = "🎉 Payment Confirmed & All Videos Unlocked!"
+        notification_message = (
+            f"Your manual UPI payment of ₹{payment.amount:.0f} (UTR: {payment.utr}) for {plan_info.get('name', 'Subscription')} "
+            f"has been verified and confirmed! All video lessons and trading modules are now fully unlocked."
+        )
+        UserNotification.objects.create(
+            user=payment.user,
+            title=notification_title,
+            message=notification_message,
+            notification_type='payment_approved',
+            link='/dashboard/#my-courses'
+        )
+
+        # Attempt to send confirmation email
+        try:
+            send_mail(
+                subject="🎉 Payment Confirmed - All Tradex Academy Videos Unlocked!",
+                message=(
+                    f"Hello {payment.user.name or payment.user.email},\n\n"
+                    f"Great news! Your manual UPI payment of ₹{payment.amount:.0f} (UTR: {payment.utr}) "
+                    f"has been verified and confirmed by our team.\n\n"
+                    f"Your subscription is now active, and all video lessons and curriculum modules are fully unlocked!\n\n"
+                    f"Start watching here:\n"
+                    f"{request.build_absolute_uri('/dashboard/')}\n\n"
+                    f"Happy Trading,\n"
+                    f"Tradex Academy Team"
+                ),
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@tradexacademy.com'),
+                recipient_list=[payment.user.email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
     messages.success(
         request,
-        f"Payment #{payment.id} (UTR: {payment.utr}) approved! Access unlocked for {payment.user.email}."
+        f"Payment #{payment.id} (UTR: {payment.utr}) approved! Access unlocked and confirmation notification sent to {payment.user.email}."
     )
     return redirect('subscriptions:admin_payments')
 
@@ -319,6 +330,7 @@ def admin_payment_approve_view(request, payment_id):
 def admin_payment_reject_view(request, payment_id):
     """
     Reject manual payment with a reason. No subscription is granted.
+    Notifies the subscriber of the rejection.
     """
     if not is_admin_email(request.user):
         raise Http404("Page not found")
@@ -332,7 +344,35 @@ def admin_payment_reject_view(request, payment_id):
         payment.reject_reason = reason
         payment.reviewed_at = timezone.now()
         payment.reviewed_by = request.user
-        payment.save(update_fields=['status', 'reject_reason', 'reviewed_at', 'reviewed_by'])
+        payment.user_notified = False
+        payment.save(update_fields=['status', 'reject_reason', 'reviewed_at', 'reviewed_by', 'user_notified'])
 
-    messages.warning(request, f"Payment #{payment.id} marked as rejected.")
+        UserNotification.objects.create(
+            user=payment.user,
+            title="⚠️ Payment Verification Notice",
+            message=f"Your manual UPI payment (UTR: {payment.utr}) could not be verified. Reason: {reason}. If you transferred funds, please submit a valid receipt or contact support.",
+            notification_type='payment_rejected',
+            link='/subscriptions/checkout/'
+        )
+
+    messages.warning(request, f"Payment #{payment.id} marked as rejected and user notified.")
     return redirect('subscriptions:admin_payments')
+
+
+@login_required
+@require_POST
+def mark_notification_read_view(request, notification_id):
+    """Marks a single notification as read."""
+    notification = get_object_or_404(UserNotification, id=notification_id, user=request.user)
+    notification.is_read = True
+    notification.save(update_fields=['is_read'])
+    return JsonResponse({'status': 'ok', 'notification_id': notification.id})
+
+
+@login_required
+@require_POST
+def mark_all_notifications_read_view(request):
+    """Marks all unread notifications for the user as read."""
+    UserNotification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return JsonResponse({'status': 'ok'})
+

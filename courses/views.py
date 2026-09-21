@@ -255,6 +255,7 @@ def dashboard_home(request):
 
     active_subscriptions = list(request.user.subscriptions.filter(status='ACTIVE', end_date__gt=timezone.now()).order_by('-created_at'))
     pending_order_id = request.GET.get('order')
+    manual_payments = request.user.manual_payments.all().order_by('-created_at')
 
     return render(request, 'courses/dashboard.html', {
         'subcategories_data': subcategories_data,
@@ -266,6 +267,7 @@ def dashboard_home(request):
         'recent_watched': recent_watched,
         'last_payment': last_payment,
         'all_payments': all_payments,
+        'manual_payments': manual_payments,
         'has_combo_access': has_combo_access,
         'channels': channels,
         'community_messages': community_messages,

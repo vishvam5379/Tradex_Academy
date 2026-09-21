@@ -20,4 +20,6 @@ urlpatterns = [
     path('success/', views.payment_success_view, name='success'),
     path('failed/', views.payment_failed_view, name='failed'),
     path('my-subscription/', views.my_subscription_view, name='my_subscription'),
+    path('notifications/<int:notification_id>/read/', views_manual.mark_notification_read_view, name='mark_notification_read'),
+    path('notifications/read-all/', views_manual.mark_all_notifications_read_view, name='mark_all_notifications_read'),
 ]

@@ -344,6 +344,13 @@ PLAN_ACCESS_MAPPING = {
 SUBSCRIPTION_PRICE = SUBSCRIPTION_PLANS['standard']['price']
 SUBSCRIPTION_DURATION_DAYS = 90
 
+# Payment Flow Mode: 'manual_upi' (Direct QR + UTR verification) or 'razorpay' (Automated webhook payment links)
+PAYMENT_MODE = (os.getenv('PAYMENT_MODE') or 'manual_upi').lower().strip()
+MANUAL_UPI_ID = (os.getenv('MANUAL_UPI_ID') or '9313858614@ibl').strip()
+MANUAL_UPI_NAME = (os.getenv('MANUAL_UPI_NAME') or 'Tradex Academy').strip()
+MANUAL_UPI_PHONE = (os.getenv('MANUAL_UPI_PHONE') or '9313858614').strip()
+ADMIN_EMAILS = (os.getenv('ADMIN_EMAILS') or 'sukhadiyavishvam22@gmail.com,200.vishvam.newljit@gmail.com,admin@tradex.com').strip()
+
 # Google OAuth 2.0 Settings
 GOOGLE_CLIENT_ID = (os.getenv('GOOGLE_CLIENT_ID') or '').strip()
 GOOGLE_CLIENT_SECRET = (os.getenv('GOOGLE_CLIENT_SECRET') or '').strip()

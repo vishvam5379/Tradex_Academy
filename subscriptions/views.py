@@ -30,7 +30,7 @@ def initiate_upi_payment(request, plan_key=None):
     Blocks duplicate active subscription for the same plan.
     """
     plan = plan_key or request.GET.get('plan', 'starter')
-    payment_mode = (os.getenv('PAYMENT_MODE') or getattr(settings, 'PAYMENT_MODE', 'razorpay')).lower().strip()
+    payment_mode = (getattr(settings, 'PAYMENT_MODE', None) or os.getenv('PAYMENT_MODE') or 'manual_upi').lower().strip()
     if payment_mode == 'manual_upi':
         from .views_manual import normalize_plan_key
         return redirect('subscriptions:manual_checkout', plan_key=normalize_plan_key(plan))
@@ -228,7 +228,7 @@ def checkout_view(request):
     - 'razorpay': goes to Razorpay UPI link flow
     """
     plan = request.GET.get('plan', 'starter')
-    payment_mode = (os.getenv('PAYMENT_MODE') or getattr(settings, 'PAYMENT_MODE', 'razorpay')).lower().strip()
+    payment_mode = (getattr(settings, 'PAYMENT_MODE', None) or os.getenv('PAYMENT_MODE') or 'manual_upi').lower().strip()
     if payment_mode == 'manual_upi':
         from .views_manual import normalize_plan_key
         return redirect('subscriptions:manual_checkout', plan_key=normalize_plan_key(plan))

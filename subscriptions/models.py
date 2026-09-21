@@ -179,6 +179,7 @@ class ManualPayment(models.Model):
         related_name='reviewed_manual_payments'
     )
     reject_reason = models.TextField(blank=True, null=True)
+    user_notified = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'manual_payments'
@@ -193,4 +194,34 @@ class ManualPayment(models.Model):
     def plan_name(self):
         plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
         return plans.get(self.plan_key, {}).get('name', self.plan_key.title())
+
+
+class UserNotification(models.Model):
+    NOTIFICATION_TYPES = [
+        ('payment_approved', 'Payment Approved'),
+        ('payment_rejected', 'Payment Rejected'),
+        ('subscription_activated', 'Subscription Activated'),
+        ('info', 'Information'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notifications'
+    )
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES, default='info')
+    is_read = models.BooleanField(default=False)
+    link = models.CharField(max_length=255, blank=True, null=True, default='/dashboard/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'user_notifications'
+        ordering = ['-created_at']
+        verbose_name = 'User Notification'
+        verbose_name_plural = 'User Notifications'
+
+    def __str__(self):
+        return f"Notification for {self.user.email}: {self.title}"
 
