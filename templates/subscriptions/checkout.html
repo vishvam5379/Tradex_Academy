@@ -78,12 +78,12 @@
     <a href="?plan=standard" class="plan-tab-card {% if selected_plan_code == 'standard' %}active{% endif %}">
       <div>
         <span class="badge badge-gray" style="font-size: 0.6875rem; margin-bottom: 6px;">Core Curriculum</span>
-        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary);">Standard Academy</div>
-        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">Indian Markets + Spot Gold</div>
+        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary);">Indian Market Foundation</div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">Stock Analysis & Setups</div>
       </div>
       <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: flex-end;">
-        <span class="num" style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary);">₹5,000</span>
-        <span style="font-size: 0.6875rem; color: var(--text-muted);">60 days</span>
+        <span class="num" style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary);">₹3,999</span>
+        <span style="font-size: 0.6875rem; color: var(--text-muted);">90 days</span>
       </div>
     </a>
 
@@ -91,14 +91,14 @@
     <a href="?plan=gold_strategy" class="plan-tab-card {% if selected_plan_code == 'gold_strategy' %}active gold{% endif %}">
       <div>
         <span class="badge" style="font-size: 0.6875rem; margin-bottom: 6px; background: rgba(234, 179, 8, 0.2); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.4);">
-          Special Strategy
+          Forex Gold System
         </span>
-        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary);">Forex Gold Strategy</div>
+        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary);">Forex Gold Mastery</div>
         <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">Strategy + Custom Indicator</div>
       </div>
       <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: flex-end;">
-        <span class="num" style="font-size: 1.3rem; font-weight: 700; color: #eab308;">₹10,000</span>
-        <span style="font-size: 0.6875rem; color: var(--text-muted);">60 days</span>
+        <span class="num" style="font-size: 1.3rem; font-weight: 700; color: #eab308;">₹9,999</span>
+        <span style="font-size: 0.6875rem; color: var(--text-muted);">6 months</span>
       </div>
     </a>
 
@@ -106,14 +106,14 @@
     <a href="?plan=combo" class="plan-tab-card {% if selected_plan_code == 'combo' %}active{% endif %}" style="border-width: {% if selected_plan_code == 'combo' %}2px{% else %}1px{% endif %};">
       <div>
         <span class="badge badge-green" style="font-size: 0.6875rem; margin-bottom: 6px;">
-          Best Value &bull; 5 Months + Community
+          BEST VALUE &bull; 12 Months Access
         </span>
-        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary);">Combined Master Access</div>
-        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">All Standard + Gold Strategy</div>
+        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary);">Complete Trader</div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">Everything in Both + Bonuses</div>
       </div>
       <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: flex-end;">
-        <span class="num" style="font-size: 1.3rem; font-weight: 700; color: var(--accent-primary);">₹12,500</span>
-        <span style="font-size: 0.6875rem; color: var(--accent-primary); font-weight: 600;">5 months</span>
+        <span class="num" style="font-size: 1.3rem; font-weight: 700; color: var(--accent-primary);">₹11,999</span>
+        <span style="font-size: 0.6875rem; color: var(--accent-primary); font-weight: 600;">12 months</span>
       </div>
     </a>
   </div>
@@ -134,64 +134,72 @@
       <div class="plan-price-block">
         <span class="plan-price-currency">₹</span>
         <span class="plan-price-value num">{{ price }}</span>
-        <span class="plan-price-duration num">for {% if selected_plan_code == 'combo' %}5 months (150 days){% else %}2 months (60 days){% endif %}</span>
+        <span class="plan-price-duration num">for {% if selected_plan_code == 'combo' %}12 months (365 days){% elif selected_plan_code == 'gold_strategy' %}6 months (180 days){% else %}90 days{% endif %}</span>
       </div>
 
       <ul class="features-list">
         {% if selected_plan_code == 'combo' %}
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon" style="color: var(--accent-primary);"></i>
-          <div><strong>VIP Community Access Included</strong>: Regular Gold trade setups provided based on taught strategy lectures</div>
+          <div><strong>Everything in Indian Market Foundation</strong></div>
         </li>
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon"></i>
-          <div><strong>Extended 5 Months Validity</strong> (150 days unrestricted streaming across all modules)</div>
+          <div><strong>Everything in Forex Gold Mastery</strong></div>
         </li>
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon"></i>
-          <div><strong>Includes all ₹5,000 Standard content</strong> (Indian Markets & Spot Gold)</div>
+          <div>Risk management and position sizing module</div>
         </li>
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon"></i>
-          <div><strong>Includes all ₹10,000 Forex Gold Strategy & Custom Strategy Indicator</strong></div>
+          <div>Monthly live Q&A / chart review</div>
         </li>
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon"></i>
-          <div>Exclusive TradingView / MetaTrader indicator algorithms & signal rules</div>
+          <div>Lifetime indicator updates</div>
+        </li>
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon"></i>
+          <div>Community access</div>
         </li>
         {% elif selected_plan_code == 'gold_strategy' %}
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
-          <div><strong>Exclusive Proprietary Strategy Indicator</strong> (TradingView/MT5 algorithms)</div>
+          <div>Market structure and top-down analysis (Weekly &rarr; Daily &rarr; 4H)</div>
         </li>
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
-          <div><strong>Pure Price Action Gold Movement Strategy</strong></div>
+          <div>Intraday setups using the strategy</div>
         </li>
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
-          <div>London Killzone scalping algorithm</div>
+          <div>Multi-timeframe confirmation checklist</div>
         </li>
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
-          <div>50+ backtested live trade scenarios & risk management engine</div>
+          <div>Execution on all timeframes</div>
+        </li>
+        <li class="feature-item">
+          <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
+          <div>Proprietary strategy indicator (TradingView/MT5) + setup guide</div>
         </li>
         {% else %}
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon"></i>
-          <div>Spot Gold (XAU/USD) price action and Dollar correlation series</div>
+          <div>Technical analysis basics: candles, trends, support and resistance</div>
         </li>
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon"></i>
-          <div>Indian Market: Futures contract mechanics & SPAN margins</div>
+          <div>Market structure: how price really moves</div>
         </li>
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon"></i>
-          <div>Indian Market: Options Greeks, Open Interest & Expiry scalping</div>
+          <div>Stock analysis and swing setups</div>
         </li>
         <li class="feature-item">
           <i data-lucide="check" class="feature-check-icon"></i>
-          <div>Indian Market: Stock trading, Market Structure & Break of Structure</div>
+          <div>Trade checklist PDF + journal template</div>
         </li>
         {% endif %}
       </ul>

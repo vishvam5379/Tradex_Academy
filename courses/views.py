@@ -10,7 +10,7 @@ from .models import Category, SubCategory, Video, WatchProgress, CommunityChanne
 
 
 def user_has_combo_access(user):
-    """Helper function to check if user has active ₹12,500 Combo Master subscription or staff privileges."""
+    """Helper function to check if user has active Complete Trader (₹11,999) subscription or staff privileges."""
     if not user or not user.is_authenticated:
         return False
     if user.is_staff or user.is_superuser:
@@ -84,10 +84,10 @@ def dashboard_home(request):
             status='ACTIVE',
             defaults={
                 'plan_type': 'combo',
-                'plan_name': 'Combined Master Access (Full Bundle)',
-                'amount_paid': 12500.00,
+                'plan_name': 'Complete Trader',
+                'amount_paid': 11999.00,
                 'start_date': now,
-                'end_date': now + timedelta(days=150)
+                'end_date': now + timedelta(days=365)
             }
         )
 
@@ -101,7 +101,7 @@ def dashboard_home(request):
     else:
         days_remaining = 0
 
-    # Community Access restriction: Only ₹12,500 Combo Master Users (or staff/superusers)
+    # Community Access restriction: Only ₹11,999 Complete Trader Users (or staff/superusers)
     has_combo_access = bool(
         request.user.is_staff or 
         request.user.is_superuser or 
@@ -315,10 +315,10 @@ def video_player(request, category_slug, subcategory_slug, video_id):
     # Server-side paywall verification: all videos strictly require matching subscription tier
     if not is_subscribed:
         plan_code = 'gold_strategy' if subcategory.tier_required == 'gold_strategy' else 'standard'
-        tier_label = "Forex Gold Strategy & Indicator (₹10,000)" if subcategory.tier_required == 'gold_strategy' else "Standard Trading Academy (₹5,000)"
+        tier_label = "Forex Gold Mastery (₹9,999)" if subcategory.tier_required == 'gold_strategy' else "Indian Market Foundation (₹3,999)"
         messages.warning(
             request,
-            f"'{video.title}' requires an active {tier_label} or Combined All-Access plan."
+            f"'{video.title}' requires an active {tier_label} or Complete Trader plan."
         )
         return redirect(f"/subscriptions/checkout/?plan={plan_code}&next={request.path}")
 
@@ -366,7 +366,7 @@ def mark_video_complete_api(request, video_id):
 def community_view(request):
     """
     Dedicated Telegram-style Community page.
-    Restricted strictly to users with active ₹12,500 Combo Master plan or staff/superusers.
+    Restricted strictly to users with active ₹11,999 Complete Trader plan or staff/superusers.
     """
     has_combo = user_has_combo_access(request.user)
     channels = CommunityChannel.objects.all().order_by('order')
@@ -389,7 +389,7 @@ def community_view(request):
 def api_get_community_messages(request, channel_slug):
     """Fetch messages for a specific community channel (AJAX API)."""
     if not user_has_combo_access(request.user):
-        return JsonResponse({'status': 'error', 'message': 'Community access is restricted to active ₹12,500 Combo Master members.'}, status=403)
+        return JsonResponse({'status': 'error', 'message': 'Community access is restricted to active Complete Trader members.'}, status=403)
     
     channel = get_object_or_404(CommunityChannel, slug=channel_slug)
     messages_qs = CommunityMessage.objects.filter(channel=channel).select_related('user', 'parent_reply', 'parent_reply__user').order_by('created_at')
@@ -428,7 +428,7 @@ def api_get_community_messages(request, channel_slug):
 def api_send_community_message(request, channel_slug):
     """Post a new message in a community channel."""
     if not user_has_combo_access(request.user):
-        return JsonResponse({'status': 'error', 'message': 'Community access is restricted to active ₹12,500 Combo Master members.'}, status=403)
+        return JsonResponse({'status': 'error', 'message': 'Community access is restricted to active Complete Trader members.'}, status=403)
 
     channel = get_object_or_404(CommunityChannel, slug=channel_slug)
 

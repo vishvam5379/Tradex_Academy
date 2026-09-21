@@ -19,7 +19,7 @@ def subscription_required(view_func):
         if not request.user.has_active_subscription:
             messages.warning(
                 request,
-                "🔒 This course content requires an active subscription. Unlock complete access for ₹5,000 / 2 months."
+                "🔒 This course content requires an active subscription. Unlock access starting at ₹3,999 / 90 days."
             )
             return redirect(f"{reverse('subscriptions:checkout')}?next={request.path}")
 

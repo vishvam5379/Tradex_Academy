@@ -182,160 +182,167 @@
       <span class="badge badge-gray" style="margin-bottom: 8px;">Transparent Pricing</span>
       <h2 style="font-size: 1.85rem; color: var(--text-primary); margin-bottom: 8px;">Select your curriculum plan</h2>
       <p style="color: var(--text-secondary); font-size: 0.9375rem; max-width: 640px; margin: 0 auto;">
-        Choose standard access, specialized Forex Gold Strategy with Indicator, or get the complete master combo.
+        Choose Indian Market Foundation, specialized Forex Gold Mastery, or get the Complete Trader access.
       </p>
     </div>
 
     <!-- 3 Pricing Cards Grid -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 20px; align-items: stretch; max-width: 1100px; margin: 0 auto;">
       
-      <!-- Tier 1: Standard Plan (₹5,000) -->
+      <!-- Tier 1: Indian Market Foundation (₹3,999) -->
       <div class="card" style="padding: 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative; background-color: var(--bg-sidebar);">
         <div>
           <span class="badge badge-gray" style="margin-bottom: 10px;">Core Curriculum</span>
-          <h3 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 6px;">Standard Academy</h3>
+          <h3 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 6px;">Indian Market Foundation</h3>
           <p style="color: var(--text-secondary); font-size: 0.8125rem; line-height: 1.45; margin-bottom: 20px;">
-            Complete foundational and derivative education across Indian and Forex markets.
+            Learn to read charts and analyse stocks with a clear method.
           </p>
 
           <div style="margin-bottom: 24px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px;">
-            <div class="num" style="font-size: 2.2rem; font-weight: 700; color: var(--text-primary); line-height: 1;">₹5,000</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Valid for 2 months (60 days)</div>
+            <div class="num" style="font-size: 2.2rem; font-weight: 700; color: var(--text-primary); line-height: 1;">₹3,999</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">90 days access</div>
           </div>
 
           <ul class="features-list" style="margin-bottom: 24px;">
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon"></i>
-              <span>Spot Gold (XAU/USD) price action lessons</span>
+              <span>Technical analysis basics: candles, trends, support and resistance</span>
             </li>
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon"></i>
-              <span>Indian Market: Futures & SPAN margin models</span>
+              <span>Market structure: how price really moves</span>
             </li>
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon"></i>
-              <span>Indian Market: Options Greeks & OI analysis</span>
+              <span>Stock analysis and swing setups</span>
             </li>
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon"></i>
-              <span>Indian Market: Stock price action & swing setups</span>
+              <span>Trade checklist PDF + journal template</span>
             </li>
           </ul>
         </div>
 
         {% if user.is_authenticated %}
         <a href="{% url 'subscriptions:checkout' %}?plan=standard" class="btn btn-secondary btn-block btn-lg" id="planStandardBtn">
-          Subscribe &bull; ₹5,000
+          Start Learning • ₹3,999
         </a>
         {% else %}
         <a href="{% url 'accounts:signup' %}?plan=standard" class="btn btn-secondary btn-block btn-lg">
-          Sign up &bull; ₹5,000
+          Start Learning • ₹3,999
         </a>
         {% endif %}
       </div>
 
-      <!-- Tier 2: Special Forex Gold Strategy + Indicator (₹10,000) -->
+      <!-- Tier 2: Forex Gold Mastery (₹9,999) -->
       <div class="card" style="padding: 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative; background-color: var(--bg-sidebar); border-color: rgba(234, 179, 8, 0.4);">
         <div>
           <span class="badge" style="background-color: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); margin-bottom: 10px;">
-            Special Strategy & Indicator
+            Forex Gold System
           </span>
-          <h3 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 6px;">Forex Gold Strategy & Indicator</h3>
+          <h3 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 6px;">Forex Gold Mastery</h3>
           <p style="color: var(--text-secondary); font-size: 0.8125rem; line-height: 1.45; margin-bottom: 20px;">
-            Proprietary Gold strategy based on pure price action movement with custom indicator software.
+            A complete, repeatable system for trading gold on any timeframe.
           </p>
 
           <div style="margin-bottom: 24px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px;">
-            <div class="num" style="font-size: 2.2rem; font-weight: 700; color: #eab308; line-height: 1;">₹10,000</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Valid for 2 months (60 days)</div>
+            <div class="num" style="font-size: 2.2rem; font-weight: 700; color: #eab308; line-height: 1;">₹9,999</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">6 months access</div>
           </div>
 
           <ul class="features-list" style="margin-bottom: 24px;">
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
-              <span><strong>Proprietary Strategy Indicator</strong> (TradingView/MT5)</span>
+              <span>Market structure and top-down analysis (Weekly &rarr; Daily &rarr; 4H)</span>
             </li>
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
-              <span><strong>Pure Price Action Gold Movement Strategy</strong></span>
+              <span>Intraday setups using the strategy</span>
             </li>
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
-              <span>London Killzone scalping algorithm</span>
+              <span>Multi-timeframe confirmation checklist</span>
             </li>
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
-              <span>50+ backtested live trade setups & case studies</span>
+              <span>Execution on all timeframes</span>
+            </li>
+            <li class="feature-item">
+              <i data-lucide="check" class="feature-check-icon" style="color: #eab308;"></i>
+              <span>Proprietary strategy indicator (TradingView/MT5) + setup guide</span>
             </li>
           </ul>
         </div>
 
         {% if user.is_authenticated %}
         <a href="{% url 'subscriptions:checkout' %}?plan=gold_strategy" class="btn btn-primary btn-block btn-lg" style="background-color: #eab308; border-color: #ca8a04; color: #000;" id="planGoldBtn">
-          Subscribe &bull; ₹10,000
+          Get the System • ₹9,999
         </a>
         {% else %}
         <a href="{% url 'accounts:signup' %}?plan=gold_strategy" class="btn btn-primary btn-block btn-lg" style="background-color: #eab308; border-color: #ca8a04; color: #000;">
-          Sign up &bull; ₹10,000
+          Get the System • ₹9,999
         </a>
         {% endif %}
       </div>
 
-      <!-- Tier 3: Combined Master Access (₹12,500 - 5 Months + VIP Community) -->
+      <!-- Tier 3: Complete Trader (₹11,999 - Best Value) -->
       <div class="card" style="padding: 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative; background: linear-gradient(180deg, var(--bg-sidebar) 0%, rgba(16, 185, 129, 0.05) 100%); border: 2px solid var(--accent-primary); box-shadow: 0 8px 30px rgba(16, 185, 129, 0.15);">
         <div style="position: absolute; top: -12px; right: 24px;">
           <span class="badge badge-green" style="font-size: 0.75rem; font-weight: 700; padding: 4px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-            BEST VALUE &bull; 5 MONTHS + COMMUNITY
+            BEST VALUE
           </span>
         </div>
 
         <div>
-          <span class="badge badge-green" style="margin-bottom: 10px;">5 Months Access + VIP Community</span>
-          <h3 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 6px;">Combined Master Access</h3>
+          <span class="badge badge-green" style="margin-bottom: 10px;">12 Months Access</span>
+          <h3 style="font-size: 1.25rem; color: var(--text-primary); margin-bottom: 6px;">Complete Trader</h3>
           <p style="color: var(--text-secondary); font-size: 0.8125rem; line-height: 1.45; margin-bottom: 20px;">
-            Unrestricted access to BOTH ₹5,000 Standard Content and ₹10,000 Forex Gold Strategy & Indicator + VIP Community!
+            Everything in both courses plus bonuses, for a full year.
           </p>
 
           <div style="margin-bottom: 24px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px;">
             <div style="display: flex; align-items: baseline; gap: 8px;">
-              <div class="num" style="font-size: 2.3rem; font-weight: 700; color: var(--accent-primary); line-height: 1;">₹12,500</div>
-              <div class="num" style="font-size: 1rem; color: var(--text-muted); text-decoration: line-through;">₹15,000</div>
+              <div class="num" style="font-size: 2.3rem; font-weight: 700; color: var(--accent-primary); line-height: 1;">₹11,999</div>
+              <div class="num" style="font-size: 1rem; color: var(--text-muted); text-decoration: line-through;">₹13,998</div>
             </div>
-            <div style="font-size: 0.75rem; color: var(--accent-primary); font-weight: 600; margin-top: 4px;">Extended 5 Months Validity (150 Days Access)</div>
+            <div style="font-size: 0.75rem; color: var(--accent-primary); font-weight: 600; margin-top: 4px;">12 months access</div>
           </div>
 
           <ul class="features-list" style="margin-bottom: 24px;">
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon" style="color: var(--accent-primary);"></i>
-              <span><strong>VIP Community Access</strong>: Regular Gold trade setups provided based on lectures taught</span>
+              <span>Everything in Indian Market Foundation</span>
             </li>
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon"></i>
-              <span><strong>EVERYTHING in ₹5,000 Standard Content</strong> (Indian Markets & Spot Gold)</span>
+              <span>Everything in Forex Gold Mastery</span>
             </li>
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon"></i>
-              <span><strong>EVERYTHING in ₹10,000 Forex Gold Strategy & Indicator</strong></span>
+              <span>Risk management and position sizing module</span>
             </li>
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon"></i>
-              <span>Proprietary Custom Strategy Indicator Access</span>
+              <span>Monthly live Q&A / chart review</span>
             </li>
             <li class="feature-item">
               <i data-lucide="check" class="feature-check-icon"></i>
-              <span>Pure Price Action Gold Movement strategy</span>
+              <span>Lifetime indicator updates</span>
+            </li>
+            <li class="feature-item">
+              <i data-lucide="check" class="feature-check-icon"></i>
+              <span>Community access</span>
             </li>
           </ul>
         </div>
 
-
         {% if user.is_authenticated %}
         <a href="{% url 'subscriptions:checkout' %}?plan=combo" class="btn btn-primary btn-block btn-lg" id="planComboBtn">
-          Unlock All Access &bull; ₹12,500
+          Unlock Everything • ₹11,999
         </a>
         {% else %}
         <a href="{% url 'accounts:signup' %}?plan=combo" class="btn btn-primary btn-block btn-lg">
-          Sign up & Unlock All &bull; ₹12,500
+          Unlock Everything • ₹11,999
         </a>
         {% endif %}
       </div>

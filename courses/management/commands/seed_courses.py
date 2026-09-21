@@ -350,7 +350,7 @@ class Command(BaseCommand):
         demo_subscribed_user, _ = User.objects.get_or_create(
             email='pro_trader@example.com',
             defaults={
-                'name': 'Rahul Sharma (Combo Master)',
+                'name': 'Rahul Sharma (Complete Trader)',
                 'phone': '+91 98765 43210',
             }
         )
@@ -362,11 +362,11 @@ class Command(BaseCommand):
             status='ACTIVE',
             defaults={
                 'plan_type': 'combo',
-                'plan_name': 'Combined Master Access (5 Months + VIP Community)',
-                'amount_paid': 12500.00,
+                'plan_name': 'Complete Trader (12 Months)',
+                'amount_paid': 11999.00,
                 'currency': 'INR',
                 'start_date': timezone.now(),
-                'end_date': timezone.now() + timedelta(days=150),
+                'end_date': timezone.now() + timedelta(days=365),
                 'razorpay_order_id': 'order_demo_combo_123',
                 'razorpay_payment_id': 'pay_demo_combo_123',
                 'razorpay_signature': 'sig_demo_combo_123',
@@ -374,11 +374,11 @@ class Command(BaseCommand):
         )
 
 
-        # User 2: Gold Strategy + Indicator Only (₹10,000)
+        # User 2: Forex Gold Mastery (₹9,999)
         gold_user, _ = User.objects.get_or_create(
             email='gold_trader@example.com',
             defaults={
-                'name': 'Vikram Mehta (Gold Strategy)',
+                'name': 'Vikram Mehta (Forex Gold Mastery)',
                 'phone': '+91 98222 33344',
             }
         )
@@ -390,22 +390,22 @@ class Command(BaseCommand):
             status='ACTIVE',
             defaults={
                 'plan_type': 'gold_strategy',
-                'plan_name': 'Forex Gold Strategy + Strategy Indicator (₹10,000)',
-                'amount_paid': 10000.00,
+                'plan_name': 'Forex Gold Mastery (₹9,999)',
+                'amount_paid': 9999.00,
                 'currency': 'INR',
                 'start_date': timezone.now(),
-                'end_date': timezone.now() + timedelta(days=60),
+                'end_date': timezone.now() + timedelta(days=180),
                 'razorpay_order_id': 'order_demo_gold_123',
                 'razorpay_payment_id': 'pay_demo_gold_123',
                 'razorpay_signature': 'sig_demo_gold_123',
             }
         )
 
-        # User 3: Standard Academy Only (₹5,000)
+        # User 3: Indian Market Foundation (₹3,999)
         standard_user, _ = User.objects.get_or_create(
             email='standard_trader@example.com',
             defaults={
-                'name': 'Karan Patel (Standard Pass)',
+                'name': 'Karan Patel (Indian Market Foundation)',
                 'phone': '+91 97111 22233',
             }
         )
@@ -417,11 +417,11 @@ class Command(BaseCommand):
             status='ACTIVE',
             defaults={
                 'plan_type': 'standard',
-                'plan_name': 'Standard Trading Academy (₹5,000)',
-                'amount_paid': 5000.00,
+                'plan_name': 'Indian Market Foundation (₹3,999)',
+                'amount_paid': 3999.00,
                 'currency': 'INR',
                 'start_date': timezone.now(),
-                'end_date': timezone.now() + timedelta(days=60),
+                'end_date': timezone.now() + timedelta(days=90),
                 'razorpay_order_id': 'order_demo_std_123',
                 'razorpay_payment_id': 'pay_demo_std_123',
                 'razorpay_signature': 'sig_demo_std_123',
@@ -441,9 +441,9 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("[OK] Successfully seeded Trading Academy categories, lessons, and multi-tier demo users!"))
         self.stdout.write(self.style.SUCCESS("  - Admin: admin@tradingacademy.com / Admin@123456"))
-        self.stdout.write(self.style.SUCCESS("  - Combo (Rs. 12,500): pro_trader@example.com / Trader@123"))
-        self.stdout.write(self.style.SUCCESS("  - Gold Strategy (Rs. 10,000): gold_trader@example.com / Gold@123"))
-        self.stdout.write(self.style.SUCCESS("  - Standard (Rs. 5,000): standard_trader@example.com / Standard@123"))
+        self.stdout.write(self.style.SUCCESS("  - Complete Trader (Rs. 11,999): pro_trader@example.com / Trader@123"))
+        self.stdout.write(self.style.SUCCESS("  - Forex Gold Mastery (Rs. 9,999): gold_trader@example.com / Gold@123"))
+        self.stdout.write(self.style.SUCCESS("  - Indian Market Foundation (Rs. 3,999): standard_trader@example.com / Standard@123"))
         self.stdout.write(self.style.SUCCESS("  - Free User: free_user@example.com / Free@123"))
 
 

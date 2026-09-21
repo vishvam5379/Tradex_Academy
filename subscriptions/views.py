@@ -15,7 +15,7 @@ from .utils import create_razorpay_order, verify_razorpay_signature
 
 @login_required
 def checkout_view(request):
-    """Checkout page supporting multi-tier plans: Standard (₹5,000), Gold Strategy (₹10,000), Combo (₹12,500)."""
+    """Checkout page supporting multi-tier plans: Indian Market Foundation (₹3,999), Forex Gold Mastery (₹9,999), Complete Trader (₹11,999)."""
     plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
     
     # Selected plan from query param, defaults to combo (best value) or standard
@@ -72,7 +72,7 @@ def create_order_api(request):
     
     plan_code = data.get('plan', request.GET.get('plan', 'combo'))
     plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
-    plan = plans.get(plan_code, plans.get('combo', {'price': 12500}))
+    plan = plans.get(plan_code, plans.get('combo', {'price': 11999}))
     price = plan['price']
 
     order = create_razorpay_order(
@@ -120,13 +120,13 @@ def verify_payment_view(request):
         now = timezone.now()
         plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
         plan_info = plans.get(plan_code, plans.get('combo', {
-            'name': 'Combined Master Access (Full Bundle)',
-            'price': 12500,
-            'duration_days': 60
+            'name': 'Complete Trader',
+            'price': 11999,
+            'duration_days': 365
         }))
 
-        duration_days = plan_info.get('duration_days', 60)
-        price = plan_info.get('price', 12500)
+        duration_days = plan_info.get('duration_days', 365)
+        price = plan_info.get('price', 11999)
         plan_name = f"{plan_info.get('name')} ({duration_days} Days)"
 
         # Extend if already active, or start fresh from now

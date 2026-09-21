@@ -5,8 +5,8 @@ from .models import Subscription
 def subscription_context(request):
     """Context processor providing current user subscription status and pricing config."""
     context = {
-        'SUBSCRIPTION_PRICE': getattr(settings, 'SUBSCRIPTION_PRICE', 5000),
-        'SUBSCRIPTION_DURATION_DAYS': getattr(settings, 'SUBSCRIPTION_DURATION_DAYS', 60),
+        'SUBSCRIPTION_PRICE': getattr(settings, 'SUBSCRIPTION_PRICE', 3999),
+        'SUBSCRIPTION_DURATION_DAYS': getattr(settings, 'SUBSCRIPTION_DURATION_DAYS', 90),
         'RAZORPAY_KEY_ID': getattr(settings, 'RAZORPAY_KEY_ID', ''),
         'user_has_active_subscription': False,
         'active_subscription': None,

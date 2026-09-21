@@ -40,24 +40,24 @@
     </div>
     <h3>Subscription required to view {{ subcategory.name }} lessons</h3>
     {% if subcategory.tier_required == 'gold_strategy' %}
-    <p>This special institutional curriculum and proprietary Strategy Indicator requires the Forex Gold Strategy plan (₹10,000) or the Combined Master Access bundle (₹12,500).</p>
+    <p>This repeatable gold system and proprietary strategy indicator requires the Forex Gold Mastery plan (₹9,999) or Complete Trader (₹11,999).</p>
     <div class="paywall-pricing-tag">
-      <span class="paywall-price num">₹10,000</span>
-      <span class="paywall-duration">/ 2 months (or ₹12,500 Combo)</span>
+      <span class="paywall-price num">₹9,999</span>
+      <span class="paywall-duration">/ 6 months (or ₹11,999 Complete Trader)</span>
     </div>
     {% else %}
-    <p>Access this module with the Standard Academy pass (₹5,000) or unlock everything with the Combined Master Access bundle (₹12,500).</p>
+    <p>Access this module with the Indian Market Foundation plan (₹3,999) or unlock everything with Complete Trader (₹11,999).</p>
     <div class="paywall-pricing-tag">
-      <span class="paywall-price num">₹5,000</span>
-      <span class="paywall-duration">/ 2 months (or ₹12,500 Combo)</span>
+      <span class="paywall-price num">₹3,999</span>
+      <span class="paywall-duration">/ 90 days (or ₹11,999 Complete Trader)</span>
     </div>
     {% endif %}
   </div>
   <a href="{% url 'subscriptions:checkout' %}?plan={{ recommended_plan }}" class="btn btn-primary btn-lg" style="flex-shrink: 0;" id="subscribeToUnlockBtn">
     {% if subcategory.tier_required == 'gold_strategy' %}
-    Unlock Gold Strategy &bull; ₹10,000
+    Unlock Gold Mastery &bull; ₹9,999
     {% else %}
-    Subscribe now &bull; ₹5,000
+    Start Learning &bull; ₹3,999
     {% endif %}
   </a>
 </div>
@@ -124,9 +124,9 @@
           </span>
           <span class="btn btn-secondary btn-sm">
             {% if subcategory.tier_required == 'gold_strategy' %}
-            Unlock &bull; ₹10,000
+            Unlock &bull; ₹9,999
             {% else %}
-            Unlock &bull; ₹5,000
+            Unlock &bull; ₹3,999
             {% endif %}
           </span>
         </div>

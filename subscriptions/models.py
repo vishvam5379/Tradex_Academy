@@ -15,16 +15,16 @@ class Subscription(models.Model):
     ]
 
     PLAN_TYPE_CHOICES = [
-        ('standard', 'Standard Academy (₹5,000)'),
-        ('gold_strategy', 'Forex Gold Strategy + Indicator (₹10,000)'),
-        ('combo', 'Combined All-Access Bundle (₹12,500)'),
+        ('standard', 'Indian Market Foundation (₹3,999)'),
+        ('gold_strategy', 'Forex Gold Mastery (₹9,999)'),
+        ('combo', 'Complete Trader (₹11,999)'),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='subscriptions')
     plan_type = models.CharField(max_length=50, choices=PLAN_TYPE_CHOICES, default='combo', db_index=True)
-    plan_name = models.CharField(max_length=100, default='All-Access Trading Mastery (2 Months)')
+    plan_name = models.CharField(max_length=100, default='Complete Trader (12 Months)')
     
-    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=5000.00)
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=3999.00)
     currency = models.CharField(max_length=10, default='INR')
     
     start_date = models.DateTimeField(default=timezone.now)
@@ -46,9 +46,9 @@ class Subscription(models.Model):
         ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
-        # Default end_date to start_date + 150 days (5 months) for combo or 60 days for standard/gold_strategy
+        # Default end_date: 365 days (12 months) for combo, 180 days (6 months) for gold_strategy, 90 days for standard
         if not self.end_date and self.start_date:
-            days = 150 if self.plan_type == 'combo' else 60
+            days = 365 if self.plan_type == 'combo' else (180 if self.plan_type == 'gold_strategy' else 90)
             self.end_date = self.start_date + timedelta(days=days)
         super().save(*args, **kwargs)
 

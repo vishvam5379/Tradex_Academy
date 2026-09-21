@@ -30,15 +30,15 @@ class Category(models.Model):
 class SubCategory(models.Model):
     """Sub-category leaf (e.g. Spot Gold under Forex; Futures, Options, Stock Trading under Indian Market)"""
     TIER_CHOICES = [
-        ('standard', 'Standard Academy (₹5,000)'),
-        ('gold_strategy', 'Gold Strategy + Indicator (₹10,000)'),
+        ('standard', 'Indian Market Foundation (₹3,999)'),
+        ('gold_strategy', 'Forex Gold Mastery (₹9,999)'),
     ]
 
     parent = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='subcategories')
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=120, blank=True)
     description = models.TextField(blank=True)
-    badge = models.CharField(max_length=50, blank=True, help_text='e.g., Special Indicator ₹10,000, F&O, Equity')
+    badge = models.CharField(max_length=50, blank=True, help_text='e.g., Special Indicator, Price Action, Equity')
     tier_required = models.CharField(max_length=50, choices=TIER_CHOICES, default='standard', help_text='Subscription tier required to unlock')
     order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)

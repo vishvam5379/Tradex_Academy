@@ -298,33 +298,33 @@ def _safe_int_env(name, default):
 SUBSCRIPTION_PLANS = {
     'standard': {
         'code': 'standard',
-        'name': 'Standard Trading Academy',
-        'price': _safe_int_env('PLAN_STANDARD_PRICE', 5000),
-        'duration_days': 60,
-        'description': 'Full access to Indian Market (Futures, Options, Stock Trading) and Spot Gold fundamentals.',
-        'badge': 'Standard Pass (2 Months)',
+        'name': 'Indian Market Foundation',
+        'price': _safe_int_env('PLAN_STANDARD_PRICE', 3999),
+        'duration_days': 90,
+        'description': 'Learn to read charts and analyse stocks with a clear method.',
+        'badge': 'Core Curriculum',
     },
     'gold_strategy': {
         'code': 'gold_strategy',
-        'name': 'Forex Gold Strategy + Strategy Indicator',
-        'price': _safe_int_env('PLAN_GOLD_PRICE', 10000),
-        'duration_days': 60,
-        'description': 'Specialized institutional Forex Gold Strategy curriculum based on pure price action plus exclusive proprietary Strategy Indicator.',
-        'badge': 'Special Strategy & Indicator (2 Months)',
+        'name': 'Forex Gold Mastery',
+        'price': _safe_int_env('PLAN_GOLD_PRICE', 9999),
+        'duration_days': 180,
+        'description': 'A complete, repeatable system for trading gold on any timeframe.',
+        'badge': 'Forex Gold System',
     },
     'combo': {
         'code': 'combo',
-        'name': 'Combined Master Access (Full Bundle)',
-        'price': _safe_int_env('PLAN_COMBO_PRICE', 12500),
-        'duration_days': 150,  # 5 Months
-        'description': 'Complete all-in-one access for 5 months: Includes BOTH ₹5,000 Standard Content and ₹10,000 Forex Gold Strategy & Indicator + VIP Community Access for regular Gold trade setups.',
-        'badge': 'Best Value • 5 Months + VIP Community',
+        'name': 'Complete Trader',
+        'price': _safe_int_env('PLAN_COMBO_PRICE', 11999),
+        'duration_days': 365,  # 12 Months
+        'description': 'Everything in both courses plus bonuses, for a full year.',
+        'badge': '12 Months Access',
     },
 }
 
 
 SUBSCRIPTION_PRICE = SUBSCRIPTION_PLANS['standard']['price']
-SUBSCRIPTION_DURATION_DAYS = 60
+SUBSCRIPTION_DURATION_DAYS = 90
 
 # Google OAuth 2.0 Settings
 GOOGLE_CLIENT_ID = (os.getenv('GOOGLE_CLIENT_ID') or '').strip()
