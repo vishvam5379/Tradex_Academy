@@ -253,10 +253,15 @@ def dashboard_home(request):
     channels = CommunityChannel.objects.all().order_by('order')
     community_messages = CommunityMessage.objects.select_related('user', 'channel', 'parent_reply', 'parent_reply__user').order_by('created_at')
 
+    active_subscriptions = list(request.user.subscriptions.filter(status='ACTIVE', end_date__gt=timezone.now()).order_by('-created_at'))
+    pending_order_id = request.GET.get('order')
+
     return render(request, 'courses/dashboard.html', {
         'subcategories_data': subcategories_data,
-        'has_subscription': bool(active_sub and active_sub.end_date),
+        'has_subscription': bool(active_sub and active_sub.end_date and active_sub.is_currently_active),
         'active_sub': active_sub,
+        'active_subscriptions': active_subscriptions,
+        'pending_order_id': pending_order_id,
         'days_remaining': days_remaining,
         'recent_watched': recent_watched,
         'last_payment': last_payment,
@@ -283,7 +288,7 @@ def category_video_list(request, category_slug, subcategory_slug):
     videos = subcategory.videos.all().order_by('order', 'id')
     
     is_subscribed = subcategory.is_accessible_by(request.user)
-    recommended_plan = 'gold_strategy' if subcategory.tier_required == 'gold_strategy' else 'standard'
+    recommended_plan = 'pro' if (subcategory.tier_required in ('gold_strategy', 'pro') or category.slug == 'forex') else 'starter'
     
     # User's watched video IDs
     watched_video_ids = set(
@@ -312,15 +317,14 @@ def video_player(request, category_slug, subcategory_slug, video_id):
     
     is_subscribed = subcategory.is_accessible_by(request.user)
 
-    # Server-side paywall verification: all videos strictly require matching subscription tier
+    # Server-side paywall verification: check active subscription covering this course
     if not is_subscribed:
-        plan_code = 'gold_strategy' if subcategory.tier_required == 'gold_strategy' else 'standard'
-        tier_label = "Forex Gold Mastery (₹9,999)" if subcategory.tier_required == 'gold_strategy' else "Indian Market Foundation (₹3,999)"
+        plan_code = 'pro' if (subcategory.tier_required in ('gold_strategy', 'pro') or category.slug == 'forex') else 'starter'
         messages.warning(
             request,
-            f"'{video.title}' requires an active {tier_label} or Complete Trader plan."
+            "Active subscription required to watch this lecture."
         )
-        return redirect(f"/subscriptions/checkout/?plan={plan_code}&next={request.path}")
+        return redirect(f"/subscriptions/pay/{plan_code}/")
 
     # All playlist videos in this subcategory
     playlist_videos = subcategory.videos.all().order_by('order', 'id')

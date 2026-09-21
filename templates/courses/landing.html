@@ -224,11 +224,11 @@
         </div>
 
         {% if user.is_authenticated %}
-        <a href="{% url 'subscriptions:checkout' %}?plan=standard" class="btn btn-secondary btn-block btn-lg" id="planStandardBtn">
+        <a href="{% url 'subscriptions:initiate_upi_payment_plan' 'starter' %}" class="btn btn-secondary btn-block btn-lg" id="planStandardBtn">
           Start Learning • ₹3,999
         </a>
         {% else %}
-        <a href="{% url 'accounts:signup' %}?plan=standard" class="btn btn-secondary btn-block btn-lg">
+        <a href="{% url 'subscriptions:initiate_upi_payment_plan' 'starter' %}" class="btn btn-secondary btn-block btn-lg">
           Start Learning • ₹3,999
         </a>
         {% endif %}
@@ -275,11 +275,11 @@
         </div>
 
         {% if user.is_authenticated %}
-        <a href="{% url 'subscriptions:checkout' %}?plan=gold_strategy" class="btn btn-primary btn-block btn-lg" style="background-color: #eab308; border-color: #ca8a04; color: #000;" id="planGoldBtn">
+        <a href="{% url 'subscriptions:initiate_upi_payment_plan' 'pro' %}" class="btn btn-primary btn-block btn-lg" style="background-color: #eab308; border-color: #ca8a04; color: #000;" id="planGoldBtn">
           Get the System • ₹9,999
         </a>
         {% else %}
-        <a href="{% url 'accounts:signup' %}?plan=gold_strategy" class="btn btn-primary btn-block btn-lg" style="background-color: #eab308; border-color: #ca8a04; color: #000;">
+        <a href="{% url 'subscriptions:initiate_upi_payment_plan' 'pro' %}" class="btn btn-primary btn-block btn-lg" style="background-color: #eab308; border-color: #ca8a04; color: #000;">
           Get the System • ₹9,999
         </a>
         {% endif %}
@@ -337,11 +337,11 @@
         </div>
 
         {% if user.is_authenticated %}
-        <a href="{% url 'subscriptions:checkout' %}?plan=combo" class="btn btn-primary btn-block btn-lg" id="planComboBtn">
+        <a href="{% url 'subscriptions:initiate_upi_payment_plan' 'elite' %}" class="btn btn-primary btn-block btn-lg" id="planComboBtn">
           Unlock Everything • ₹11,999
         </a>
         {% else %}
-        <a href="{% url 'accounts:signup' %}?plan=combo" class="btn btn-primary btn-block btn-lg">
+        <a href="{% url 'subscriptions:initiate_upi_payment_plan' 'elite' %}" class="btn btn-primary btn-block btn-lg">
           Unlock Everything • ₹11,999
         </a>
         {% endif %}
@@ -352,7 +352,7 @@
     <div style="display: flex; justify-content: center; gap: 24px; font-size: 0.8125rem; color: var(--text-muted); margin-top: 36px; flex-wrap: wrap;">
       <span><i data-lucide="shield" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i> 256-bit encrypted checkout</span>
       <span><i data-lucide="zap" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i> Instant plan activation</span>
-      <span><i data-lucide="credit-card" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i> UPI / Cards / Netbanking / Wallets</span>
+      <span><i data-lucide="smartphone" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i> UPI payments only</span>
     </div>
   </div>
 </section>

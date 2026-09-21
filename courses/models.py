@@ -73,7 +73,7 @@ class SubCategory(models.Model):
         if user.is_staff or user.is_superuser:
             return True
         for sub in user.subscriptions.filter(status='ACTIVE', end_date__gt=timezone.now()):
-            if sub.grants_access_to(self.tier_required):
+            if sub.grants_access_to(self.tier_required) or (self.parent and sub.grants_access_to(self.parent.slug)):
                 return True
         return False
 

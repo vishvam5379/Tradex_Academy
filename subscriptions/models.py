@@ -4,6 +4,35 @@ from django.utils import timezone
 from datetime import timedelta
 
 
+class Order(models.Model):
+    """Payment / Order record tracking payment link lifecycle"""
+    STATUS_CHOICES = [
+        ('created', 'Created'),
+        ('paid', 'Paid'),
+        ('failed', 'Failed'),
+        ('expired', 'Expired'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='orders')
+    plan = models.CharField(max_length=50, db_index=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)  # Server-enforced amount in INR
+    currency = models.CharField(max_length=10, default='INR')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='created', db_index=True)
+    gateway_order_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)  # Razorpay Payment Link ID (plink_...)
+    gateway_payment_id = models.CharField(max_length=100, blank=True, null=True, db_index=True)  # Razorpay Payment ID (pay_...)
+    short_url = models.URLField(max_length=500, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        verbose_name = 'Order'
+        verbose_name_plural = 'Orders'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Order #{self.id} - {self.user.email} - {self.plan} ({self.status})"
+
+
 class Subscription(models.Model):
     """User Subscription Plan Record"""
     STATUS_CHOICES = [
@@ -15,13 +44,16 @@ class Subscription(models.Model):
     ]
 
     PLAN_TYPE_CHOICES = [
+        ('starter', 'Indian Market Foundation (₹3,999)'),
+        ('pro', 'Forex Gold Mastery (₹9,999)'),
+        ('elite', 'Complete Trader (₹11,999)'),
         ('standard', 'Indian Market Foundation (₹3,999)'),
         ('gold_strategy', 'Forex Gold Mastery (₹9,999)'),
         ('combo', 'Complete Trader (₹11,999)'),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='subscriptions')
-    plan_type = models.CharField(max_length=50, choices=PLAN_TYPE_CHOICES, default='combo', db_index=True)
+    plan_type = models.CharField(max_length=50, choices=PLAN_TYPE_CHOICES, default='elite', db_index=True)
     plan_name = models.CharField(max_length=100, default='Complete Trader (12 Months)')
     
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=3999.00)
@@ -46,12 +78,17 @@ class Subscription(models.Model):
         ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
-        # Default end_date: 365 days (12 months) for combo, 180 days (6 months) for gold_strategy, 90 days for standard
+        # Default end_date: 365 days for elite/combo, 180 days for pro/gold_strategy, 90 days for starter/standard
         if not self.end_date and self.start_date:
-            days = 365 if self.plan_type == 'combo' else (180 if self.plan_type == 'gold_strategy' else 90)
+            plan_key = self.plan_type.lower()
+            if plan_key in ['elite', 'combo']:
+                days = 365
+            elif plan_key in ['pro', 'gold_strategy']:
+                days = 180
+            else:
+                days = 90
             self.end_date = self.start_date + timedelta(days=days)
         super().save(*args, **kwargs)
-
 
     def __str__(self):
         return f"{self.user.email} - {self.plan_name} ({self.status})"
@@ -61,19 +98,34 @@ class Subscription(models.Model):
         """Dynamic check: must have ACTIVE status and end_date in future"""
         return self.status == 'ACTIVE' and bool(self.end_date and self.end_date > timezone.now())
 
-    def grants_access_to(self, tier_required):
+    @property
+    def is_active(self):
+        return self.is_currently_active
+
+    @property
+    def expiry_date(self):
+        return self.end_date
+
+    def grants_access_to(self, course_or_tier):
         """
-        Check if this subscription tier covers the required curriculum tier.
-        - 'combo' covers everything ('standard', 'gold_strategy', 'combo')
-        - 'gold_strategy' covers 'gold_strategy'
-        - 'standard' covers 'standard'
+        Check if this subscription tier covers the required curriculum tier or course slug.
+        - 'elite' or 'combo' covers everything ('indian-market', 'forex', 'starter', 'pro', 'elite')
+        - 'pro' or 'gold_strategy' covers 'forex' and 'gold_strategy' / 'pro'
+        - 'starter' or 'standard' covers 'indian-market' and 'standard' / 'starter'
         """
         if not self.is_currently_active:
             return False
-        if self.plan_type == 'combo':
+        
+        plan_key = self.plan_type.lower()
+        if plan_key in ['elite', 'combo']:
             return True
-        return self.plan_type == tier_required
-
+        
+        target = str(course_or_tier).lower()
+        if plan_key in ['pro', 'gold_strategy']:
+            return target in ['forex', 'gold_strategy', 'pro']
+        if plan_key in ['starter', 'standard']:
+            return target in ['indian-market', 'standard', 'starter']
+        return False
 
     @property
     def days_remaining(self):

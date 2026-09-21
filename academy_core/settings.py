@@ -286,6 +286,7 @@ MESSAGE_TAGS = {
 # Razorpay & Multi-Tier Subscription Configuration
 RAZORPAY_KEY_ID = (os.getenv('RAZORPAY_KEY_ID') or '').strip() or 'rzp_test_placeholder_key_id'
 RAZORPAY_KEY_SECRET = (os.getenv('RAZORPAY_KEY_SECRET') or '').strip() or 'mock_secret_key'
+RAZORPAY_WEBHOOK_SECRET = (os.getenv('RAZORPAY_WEBHOOK_SECRET') or '').strip()
 RAZORPAY_CURRENCY = (os.getenv('RAZORPAY_CURRENCY') or '').strip() or 'INR'
 
 def _safe_int_env(name, default):
@@ -296,30 +297,47 @@ def _safe_int_env(name, default):
         return default
 
 SUBSCRIPTION_PLANS = {
-    'standard': {
-        'code': 'standard',
+    'starter': {
+        'code': 'starter',
         'name': 'Indian Market Foundation',
-        'price': _safe_int_env('PLAN_STANDARD_PRICE', 3999),
+        'price': _safe_int_env('PLAN_STARTER_PRICE', 3999),
         'duration_days': 90,
         'description': 'Learn to read charts and analyse stocks with a clear method.',
         'badge': 'Core Curriculum',
+        'course_slug': 'indian-market',
     },
-    'gold_strategy': {
-        'code': 'gold_strategy',
+    'pro': {
+        'code': 'pro',
         'name': 'Forex Gold Mastery',
-        'price': _safe_int_env('PLAN_GOLD_PRICE', 9999),
+        'price': _safe_int_env('PLAN_PRO_PRICE', 9999),
         'duration_days': 180,
         'description': 'A complete, repeatable system for trading gold on any timeframe.',
         'badge': 'Forex Gold System',
+        'course_slug': 'forex',
     },
-    'combo': {
-        'code': 'combo',
+    'elite': {
+        'code': 'elite',
         'name': 'Complete Trader',
-        'price': _safe_int_env('PLAN_COMBO_PRICE', 11999),
+        'price': _safe_int_env('PLAN_ELITE_PRICE', 11999),
         'duration_days': 365,  # 12 Months
         'description': 'Everything in both courses plus bonuses, for a full year.',
         'badge': '12 Months Access',
+        'course_slug': 'all',
     },
+}
+
+# Compatibility aliases
+SUBSCRIPTION_PLANS['standard'] = SUBSCRIPTION_PLANS['starter']
+SUBSCRIPTION_PLANS['gold_strategy'] = SUBSCRIPTION_PLANS['pro']
+SUBSCRIPTION_PLANS['combo'] = SUBSCRIPTION_PLANS['elite']
+
+PLAN_ACCESS_MAPPING = {
+    'starter': ['indian-market'],
+    'standard': ['indian-market'],
+    'pro': ['forex'],
+    'gold_strategy': ['forex'],
+    'elite': ['indian-market', 'forex'],
+    'combo': ['indian-market', 'forex'],
 }
 
 

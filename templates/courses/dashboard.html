@@ -7,6 +7,26 @@
 {% block content %}
 <div style="max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
 
+  <!-- Payment Verification Banner (shown when returning from payment link) -->
+  {% if request.GET.order %}
+  <div id="paymentVerificationBanner" class="card" style="padding: 20px 24px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.95)); border: 2px solid #38bdf8; border-radius: 12px; box-shadow: 0 8px 30px rgba(56, 189, 248, 0.2);">
+    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+      <div id="verificationSpinner" style="width: 28px; height: 28px; border: 3px solid rgba(56, 189, 248, 0.2); border-top-color: #38bdf8; border-radius: 50%; animation: spin 1s linear infinite; flex-shrink: 0;"></div>
+      <div style="flex: 1; min-width: 240px;">
+        <h3 id="verificationHeading" style="margin: 0 0 4px 0; font-size: 1.1rem; color: #ffffff; font-weight: 700;">
+          Verifying your payment...
+        </h3>
+        <p id="verificationText" style="margin: 0; font-size: 0.875rem; color: #94a3b8;">
+          We are confirming your payment with Razorpay. Your courses will unlock automatically.
+        </p>
+      </div>
+      <span id="verificationBadge" class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.8rem; padding: 6px 12px;">
+        Order #{{ request.GET.order }}
+      </span>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- User Welcome Top Header Bar -->
   <div class="card" style="padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px;">
     <div>
@@ -23,7 +43,7 @@
         <span>Profile</span>
       </a>
       {% if not user_has_combo_access %}
-      <a href="{% url 'subscriptions:checkout' %}?plan=combo" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; font-weight: 700; color: #ffffff;">
+      <a href="{% url 'subscriptions:initiate_upi_payment_plan' 'elite' %}" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; font-weight: 700; color: #ffffff;">
         <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
         <span>Upgrade to Complete Trader (₹11,999)</span>
       </a>
@@ -56,20 +76,24 @@
         </div>
         <div style="font-size: 1.1rem; font-weight: 700; color: #ffffff; line-height: 1.3;">
           {% if has_subscription %}
-            {{ active_sub.plan_name }}
+            {% for s in active_subscriptions %}
+              <div>{{ s.plan_name }}</div>
+            {% empty %}
+              {{ active_sub.plan_name }}
+            {% endfor %}
           {% else %}
-            Free Tier Account
+            No Active Plan
           {% endif %}
         </div>
         <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 6px;">
-          {% if active_sub.plan_type == 'combo' %}
-            ✨ Complete Trader (12 Months)
-          {% elif active_sub.plan_type == 'gold_strategy' %}
-            ⭐ Forex Gold Mastery Tier
-          {% elif active_sub.plan_type == 'standard' %}
-            📘 Indian Market Foundation Tier
+          {% if has_subscription %}
+            {% for s in active_subscriptions %}
+              <div style="margin-top: 2px;">Started: {{ s.start_date|date:"d M Y" }}</div>
+            {% empty %}
+              Started: {{ active_sub.start_date|date:"d M Y" }}
+            {% endfor %}
           {% else %}
-            No Active Subscription
+            <a href="/#pricing" style="color: #38bdf8; text-decoration: none;">View Plans &rarr;</a>
           {% endif %}
         </div>
       </div>
@@ -88,12 +112,12 @@
           {% else %}
             <span class="badge badge-red" style="font-size: 0.85rem; padding: 4px 10px; display: inline-flex; align-items: center; gap: 6px; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 700;">
               <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444;"></span>
-              Inactive / Free
+              Inactive / Expired
             </span>
           {% endif %}
         </div>
         <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">
-          {% if has_subscription %}Verified Razorpay Access{% else %}Subscribe to start learning{% endif %}
+          {% if has_subscription %}Verified UPI Access{% else %}Subscribe via UPI to unlock{% endif %}
         </div>
       </div>
 
@@ -110,7 +134,7 @@
           {% endif %}
         </div>
         <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 6px;">
-          {% if has_subscription %}Renewal due on expiry{% else %}Unlimited preview access{% endif %}
+          {% if has_subscription %}Active until {{ active_sub.end_date|date:"d M Y" }}{% else %}No active expiration{% endif %}
         </div>
       </div>
 
@@ -127,7 +151,7 @@
           {% endif %}
         </div>
         <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 6px;">
-          {% if days_remaining > 0 %}Full access granted{% else %}<a href="{% url 'subscriptions:checkout' %}" style="color: #38bdf8;">Get Subscribed &rarr;</a>{% endif %}
+          {% if days_remaining > 0 %}Full access granted{% else %}<a href="/#pricing" style="color: #38bdf8;">Get Subscribed &rarr;</a>{% endif %}
         </div>
       </div>
 
@@ -603,9 +627,78 @@
   });
 
   window.addEventListener('hashchange', initSectionFromHash);
+
+  // Poll order status if order param is present in URL
+  (function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('order');
+    if (!orderId) return;
+
+    const banner = document.getElementById('paymentVerificationBanner');
+    const heading = document.getElementById('verificationHeading');
+    const text = document.getElementById('verificationText');
+    const spinner = document.getElementById('verificationSpinner');
+
+    if (!banner) return;
+
+    let attempts = 0;
+    const maxAttempts = 24; // 24 * 2.5s = 60s
+    const intervalMs = 2500;
+
+    const pollTimer = setInterval(async () => {
+      attempts++;
+      try {
+        const response = await fetch(`/api/orders/${orderId}/status/`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === 'paid') {
+            clearInterval(pollTimer);
+            if (heading) {
+              heading.textContent = 'Payment Confirmed! 🎉';
+              heading.style.color = '#4ade80';
+            }
+            if (text) {
+              text.textContent = 'Your plan has been activated and courses are now unlocked. Refreshing...';
+            }
+            if (spinner) {
+              spinner.style.borderTopColor = '#4ade80';
+              spinner.style.animation = 'none';
+              spinner.innerHTML = '✓';
+              spinner.style.display = 'flex';
+              spinner.style.alignItems = 'center';
+              spinner.style.justifyContent = 'center';
+              spinner.style.color = '#4ade80';
+              spinner.style.fontWeight = 'bold';
+            }
+            setTimeout(() => {
+              window.location.href = '/dashboard/';
+            }, 1500);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Order status polling error:', err);
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(pollTimer);
+        if (spinner) spinner.style.display = 'none';
+        if (heading) {
+          heading.textContent = 'Payment is being processed';
+          heading.style.color = '#fbbf24';
+        }
+        if (text) {
+          text.innerHTML = 'Payment is being processed. Your courses will unlock shortly. If this takes longer than 5 minutes, contact support with reference: <strong>#' + orderId + '</strong>.';
+        }
+      }
+    }, intervalMs);
+  })();
 </script>
 
 <style>
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
   .tg-dash-chan-btn {
     background: #ffffff;
     border: 1px solid #cbd5e1;

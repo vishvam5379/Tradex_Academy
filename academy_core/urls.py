@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 
 from academy_core.views import health_check
 from accounts import views as accounts_views
+from subscriptions import views as subscriptions_views
 
 urlpatterns = [
     path('healthz/', health_check, name='health_check'),
@@ -21,6 +22,8 @@ urlpatterns = [
 
     path('accounts/', include('allauth.urls')),
     path('subscriptions/', include('subscriptions.urls', namespace='subscriptions')),
+    path('api/payments/webhook/', include('subscriptions.urls_webhook')),
+    path('api/orders/<int:order_id>/status/', subscriptions_views.order_status_api, name='api_order_status_root'),
     path('', include('courses.urls', namespace='courses')),
 ]
 
