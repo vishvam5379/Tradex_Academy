@@ -145,3 +145,52 @@ class Subscription(models.Model):
         if total_duration <= 0:
             return 0
         return min(100, max(0, round((remaining / total_duration) * 100)))
+
+
+class ManualPayment(models.Model):
+    """
+    Manual UPI Payment record submitted by user with UTR and optional screenshot.
+    Reviewed and approved/rejected by Admin via /admin/payments/.
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending Verification'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='manual_payments'
+    )
+    plan_key = models.CharField(max_length=50)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    utr = models.CharField(max_length=50, unique=True, help_text='12-digit UPI transaction reference')
+    payer_upi_id = models.CharField(max_length=100, blank=True, null=True)
+    screenshot_path = models.CharField(max_length=500, blank=True, null=True, help_text='Supabase Storage file path')
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='reviewed_manual_payments'
+    )
+    reject_reason = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'manual_payments'
+        ordering = ['-created_at']
+        verbose_name = 'Manual Payment'
+        verbose_name_plural = 'Manual Payments'
+
+    def __str__(self):
+        return f"ManualPayment #{self.id} - {self.user.email} - {self.plan_key} ({self.status}) - UTR: {self.utr}"
+
+    @property
+    def plan_name(self):
+        plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
+        return plans.get(self.plan_key, {}).get('name', self.plan_key.title())
+

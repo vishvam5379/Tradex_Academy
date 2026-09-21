@@ -1,0 +1,540 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Admin UPI Payments Verification | Tradex Academy{% endblock %}
+
+{% block extra_css %}
+<style>
+  .admin-wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  .admin-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .metric-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+  }
+  .metric-card.pending {
+    border-color: rgba(234, 179, 8, 0.4);
+    background: linear-gradient(180deg, rgba(234, 179, 8, 0.05) 0%, var(--bg-card) 100%);
+  }
+  .metric-title {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .metric-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .tab-bar {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+  .tab-pill {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+  }
+  .tab-pill:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .tab-pill.active {
+    color: var(--text-primary);
+    background: var(--bg-card);
+    border-color: var(--border-medium);
+  }
+  .tab-pill .count-badge {
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .tab-pill.active .count-badge {
+    background: var(--accent-primary);
+    color: #000000;
+  }
+  .payment-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .payment-table th {
+    background: var(--bg-sidebar);
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .payment-table td {
+    padding: 16px;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+  }
+  .payment-table tr:last-child td {
+    border-bottom: none;
+  }
+  .payment-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .copy-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-medium);
+  }
+  .badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-pending {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+  }
+  .badge-approved {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+  .badge-rejected {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+  .screenshot-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .screenshot-thumb:hover {
+    transform: scale(1.08);
+    border-color: var(--accent-primary);
+  }
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.active {
+    display: flex;
+  }
+  .modal-body {
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    padding: 24px;
+    max-width: 480px;
+    width: 100%;
+    position: relative;
+  }
+  .lightbox-body {
+    max-width: 800px;
+    max-height: 90vh;
+    padding: 12px;
+    background: #000;
+    text-align: center;
+  }
+  .lightbox-body img {
+    max-width: 100%;
+    max-height: 80vh;
+    border-radius: 6px;
+    object-fit: contain;
+  }
+</style>
+{% endblock %}
+
+{% block body_content %}
+<header style="border-bottom: 1px solid var(--border-subtle); background-color: var(--bg-sidebar); padding: 14px 0;">
+  <div class="container" style="display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <a href="{% url 'courses:dashboard' %}" class="brand-logo" style="text-decoration: none;">
+        <div class="brand-icon">
+          <i data-lucide="shield-check" style="width: 16px; height: 16px;"></i>
+        </div>
+        <span>TRADEX <span style="color: var(--text-muted); font-weight: 400;">ADMIN</span></span>
+      </a>
+      <span class="badge badge-gray" style="font-size: 0.72rem; padding: 2px 8px;">Payment Verification</span>
+    </div>
+    
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <a href="{% url 'courses:dashboard' %}" class="btn btn-ghost btn-sm" style="font-size: 0.8125rem;">
+        <i data-lucide="layout-dashboard" style="width: 14px; height: 14px;"></i>
+        <span>User Dashboard</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main class="admin-wrap">
+  <!-- Header -->
+  <div class="admin-header">
+    <div>
+      <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); margin: 0 0 6px;">
+        Manual UPI Payments
+      </h1>
+      <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0;">
+        Verify UTR transactions against your UPI merchant app / bank account statement before approving subscription access.
+      </p>
+    </div>
+  </div>
+
+  <!-- Metric Overview Cards -->
+  <div class="metric-cards">
+    <div class="metric-card pending">
+      <div class="metric-title">
+        <span>Needs Verification</span>
+        <i data-lucide="clock" style="width: 16px; height: 16px; color: #facc15;"></i>
+      </div>
+      <div class="metric-value" style="color: #facc15;">{{ counts.pending }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-title">
+        <span>Approved</span>
+        <i data-lucide="check-circle-2" style="width: 16px; height: 16px; color: #4ade80;"></i>
+      </div>
+      <div class="metric-value" style="color: #4ade80;">{{ counts.approved }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-title">
+        <span>Rejected</span>
+        <i data-lucide="x-circle" style="width: 16px; height: 16px; color: #f87171;"></i>
+      </div>
+      <div class="metric-value" style="color: #f87171;">{{ counts.rejected }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-title">
+        <span>Total Submissions</span>
+        <i data-lucide="layers" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
+      </div>
+      <div class="metric-value">{{ counts.all }}</div>
+    </div>
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="tab-bar">
+    <a href="?status=pending" class="tab-pill {% if current_status == 'pending' %}active{% endif %}">
+      <span>Pending</span>
+      <span class="count-badge">{{ counts.pending }}</span>
+    </a>
+    <a href="?status=approved" class="tab-pill {% if current_status == 'approved' %}active{% endif %}">
+      <span>Approved</span>
+      <span class="count-badge">{{ counts.approved }}</span>
+    </a>
+    <a href="?status=rejected" class="tab-pill {% if current_status == 'rejected' %}active{% endif %}">
+      <span>Rejected</span>
+      <span class="count-badge">{{ counts.rejected }}</span>
+    </a>
+    <a href="?status=all" class="tab-pill {% if current_status == 'all' %}active{% endif %}">
+      <span>All Records</span>
+      <span class="count-badge">{{ counts.all }}</span>
+    </a>
+  </div>
+
+  <!-- Table -->
+  {% if payments_data %}
+  <div style="overflow-x: auto;">
+    <table class="payment-table">
+      <thead>
+        <tr>
+          <th>ID / Date</th>
+          <th>User</th>
+          <th>Plan & Amount</th>
+          <th>UTR (Reference No.)</th>
+          <th>Payer UPI</th>
+          <th>Screenshot</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in payments_data %}
+        <tr>
+          <!-- ID & Date -->
+          <td>
+            <div style="font-weight: 700; color: var(--text-primary);">#{{ item.obj.id }}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+              {{ item.obj.created_at|date:"d M Y, H:i" }}
+            </div>
+          </td>
+
+          <!-- User -->
+          <td>
+            <div style="font-weight: 600; color: var(--text-primary);">
+              {{ item.obj.user.get_full_name|default:item.obj.user.email }}
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-secondary);">
+              {{ item.obj.user.email }}
+            </div>
+          </td>
+
+          <!-- Plan & Amount -->
+          <td>
+            <span class="badge badge-gray" style="font-weight: 600; text-transform: uppercase; font-size: 0.72rem;">
+              {{ item.obj.plan_name }}
+            </span>
+            <div style="font-weight: 700; color: var(--text-primary); margin-top: 4px;">
+              &#8377;{{ item.obj.amount|floatformat:0 }}
+            </div>
+          </td>
+
+          <!-- UTR -->
+          <td>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-family: monospace; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.05em; color: var(--text-primary);">
+                {{ item.obj.utr }}
+              </span>
+              <button class="copy-btn" onclick="copyUtr('{{ item.obj.utr }}', this)" title="Copy UTR">
+                <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+              </button>
+            </div>
+          </td>
+
+          <!-- Payer UPI ID -->
+          <td>
+            {% if item.obj.payer_upi_id %}
+            <span style="font-family: monospace; font-size: 0.8rem; color: var(--text-secondary);">
+              {{ item.obj.payer_upi_id }}
+            </span>
+            {% else %}
+            <span style="color: var(--text-muted); font-size: 0.78rem;">&mdash;</span>
+            {% endif %}
+          </td>
+
+          <!-- Screenshot -->
+          <td>
+            {% if item.signed_screenshot_url %}
+            <img src="{{ item.signed_screenshot_url }}" 
+                 alt="Payment proof" 
+                 class="screenshot-thumb"
+                 onclick="openLightbox('{{ item.signed_screenshot_url }}')"
+                 title="Click to view full screenshot">
+            {% elif item.obj.screenshot_path %}
+            <span class="badge badge-gray" style="font-size: 0.72rem;" title="{{ item.obj.screenshot_path }}">Uploaded</span>
+            {% else %}
+            <span style="color: var(--text-muted); font-size: 0.78rem;">None</span>
+            {% endif %}
+          </td>
+
+          <!-- Status -->
+          <td>
+            {% if item.obj.status == 'pending' %}
+            <span class="badge-status badge-pending">
+              <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+              <span>Pending</span>
+            </span>
+            {% elif item.obj.status == 'approved' %}
+            <span class="badge-status badge-approved">
+              <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+              <span>Approved</span>
+            </span>
+            {% if item.obj.reviewed_at %}
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+              by {{ item.obj.reviewed_by.email|default:"Admin" }}
+            </div>
+            {% endif %}
+            {% elif item.obj.status == 'rejected' %}
+            <span class="badge-status badge-rejected">
+              <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+              <span>Rejected</span>
+            </span>
+            {% if item.obj.reject_reason %}
+            <div style="font-size: 0.72rem; color: #f87171; margin-top: 4px; max-width: 180px; line-height: 1.2;">
+              {{ item.obj.reject_reason }}
+            </div>
+            {% endif %}
+            {% endif %}
+          </td>
+
+          <!-- Actions -->
+          <td style="text-align: right;">
+            {% if item.obj.status == 'pending' %}
+            <div style="display: inline-flex; align-items: center; gap: 8px;">
+              <form method="POST" action="{% url 'subscriptions:admin_payment_approve' item.obj.id %}" onsubmit="return confirm('Confirm approval for UTR {{ item.obj.utr }}? This will activate user subscription immediately.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-sm" style="background: #16a34a; border-color: #15803d; padding: 6px 12px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;">
+                  <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+                  <span>Approve</span>
+                </button>
+              </form>
+
+              <button type="button" class="btn btn-ghost btn-sm" style="color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 10px; font-size: 0.8rem;" onclick="openRejectModal({{ item.obj.id }}, '{{ item.obj.utr }}')">
+                <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                <span>Reject</span>
+              </button>
+            </div>
+            {% else %}
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Done</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card" style="padding: 60px 20px; text-align: center; background: var(--bg-card); border: 1px dashed var(--border-subtle); border-radius: var(--radius-sm);">
+    <i data-lucide="inbox" style="width: 40px; height: 40px; color: var(--text-muted); margin: 0 auto 12px; display: block;"></i>
+    <h3 style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 6px;">No payments found</h3>
+    <p style="color: var(--text-secondary); font-size: 0.875rem; max-width: 360px; margin: 0 auto;">
+      There are currently no manual payments matching the status "{{ current_status }}".
+    </p>
+  </div>
+  {% endif %}
+</main>
+
+<!-- Lightbox Modal for Screenshot Preview -->
+<div class="modal-overlay" id="lightboxModal" onclick="closeLightbox(event)">
+  <div class="lightbox-body">
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('lightboxModal').classList.remove('active')" style="color: #fff;">
+        <i data-lucide="x" style="width: 16px; height: 16px;"></i> Close
+      </button>
+    </div>
+    <img id="lightboxImg" src="" alt="Full proof">
+  </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div class="modal-overlay" id="rejectModal">
+  <div class="modal-body">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 1.1rem; color: var(--text-primary); margin: 0;">Reject Payment</h3>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="closeRejectModal()" style="padding: 4px;">
+        <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+      </button>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px;">
+      Payment UTR: <strong id="rejectUtrDisplay" style="color: var(--text-primary); font-family: monospace;"></strong>
+    </p>
+    <form method="POST" id="rejectForm" action="">
+      {% csrf_token %}
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Reason for Rejection</label>
+        <textarea name="reject_reason" rows="3" class="form-input" style="width: 100%; box-sizing: border-box; background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-primary); padding: 10px; border-radius: 6px; font-size: 0.875rem;" placeholder="e.g. UTR not matching bank credits, invalid amount, or screenshot illegible." required></textarea>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeRejectModal()">Cancel</button>
+        <button type="submit" class="btn btn-sm" style="background: #dc2626; color: #fff; border: 1px solid #b91c1c;">Confirm Rejection</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function copyUtr(utrText, btn) {
+    navigator.clipboard.writeText(utrText).then(() => {
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = '<i data-lucide="check" style="width: 12px; height: 12px; color: #4ade80;"></i>';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }, 1500);
+    });
+  }
+
+  function openLightbox(url) {
+    const modal = document.getElementById('lightboxModal');
+    const img = document.getElementById('lightboxImg');
+    img.src = url;
+    modal.classList.add('active');
+  }
+
+  function closeLightbox(e) {
+    if (e.target.id === 'lightboxModal') {
+      document.getElementById('lightboxModal').classList.remove('active');
+    }
+  }
+
+  function openRejectModal(paymentId, utr) {
+    const modal = document.getElementById('rejectModal');
+    const form = document.getElementById('rejectForm');
+    const display = document.getElementById('rejectUtrDisplay');
+    form.action = `/admin/payments/${paymentId}/reject/`;
+    display.textContent = utr;
+    modal.classList.add('active');
+  }
+
+  function closeRejectModal() {
+    document.getElementById('rejectModal').classList.remove('active');
+  }
+</script>
+{% endblock %}

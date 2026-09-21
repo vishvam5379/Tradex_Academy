@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}UPI Payment &bull; {{ plan_name }} | Tradex Academy{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/checkout.css' %}">
+<style>
+  .manual-checkout-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.15fr;
+    gap: 32px;
+    align-items: start;
+  }
+  @media (max-width: 880px) {
+    .manual-checkout-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .qr-box {
+    background: #ffffff;
+    padding: 16px;
+    border-radius: 12px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  }
+  .qr-box img {
+    width: 220px;
+    height: 220px;
+    display: block;
+  }
+  .copy-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-subtle);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .copy-chip:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--accent-primary);
+  }
+</style>
+{% endblock %}
+
+{% block body_content %}
+<!-- Header -->
+<header style="border-bottom: 1px solid var(--border-subtle); background-color: var(--bg-sidebar); padding: 14px 0;">
+  <div class="container" style="display: flex; align-items: center; justify-content: space-between;">
+    <a href="{% url 'courses:dashboard' %}" class="brand-logo">
+      <div class="brand-icon">
+        <i data-lucide="bar-chart-2" style="width: 16px; height: 16px;"></i>
+      </div>
+      <span>TRADEX <span style="color: var(--text-muted); font-weight: 400;">ACADEMY</span></span>
+    </a>
+    
+    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted);">
+      <i data-lucide="shield-check" style="width: 14px; height: 14px; color: var(--accent-primary);"></i>
+      <span>Direct UPI Verification</span>
+    </div>
+  </div>
+</header>
+
+<main class="container" style="padding: 40px 0 60px;">
+  <div style="max-width: 960px; margin: 0 auto;">
+    
+    <div style="margin-bottom: 24px;">
+      <a href="/#pricing" style="font-size: 0.8125rem; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+        <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+        <span>Change Plan</span>
+      </a>
+      <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); margin-top: 10px; margin-bottom: 4px;">
+        Complete Your UPI Payment
+      </h1>
+      <p style="color: var(--text-secondary); font-size: 0.875rem;">
+        Scan the QR code with any UPI app (GPay, PhonePe, Paytm, BHIM) or tap the button on mobile.
+      </p>
+    </div>
+
+    <div class="manual-checkout-grid">
+      
+      <!-- Left Column: QR Code & Pay Details -->
+      <div class="card" style="padding: 24px; background-color: var(--bg-sidebar); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); text-align: center;">
+        
+        <!-- Plan Badge -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+          <div style="text-align: left;">
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Selected Plan</div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">{{ plan_name }}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 1.4rem; font-weight: 800; color: var(--accent-primary);">₹{{ price|floatformat:0 }}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ validity_days }} days validity</div>
+          </div>
+        </div>
+
+        <!-- Offline Server-Generated QR Code -->
+        <div style="margin: 16px 0;">
+          <div class="qr-box">
+            {% if qr_data_uri %}
+              <img src="{{ qr_data_uri }}" alt="UPI QR Code for {{ plan_name }}">
+            {% else %}
+              <div style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; color: #000; font-size: 0.8rem;">
+                Scan with any UPI app
+              </div>
+            {% endif %}
+            <div style="margin-top: 8px; font-size: 0.75rem; color: #334155; font-weight: 600;">
+              Scan with any UPI app (GPay, PhonePe, Paytm)
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Pay Button -->
+        <div style="margin-top: 16px;">
+          <a href="{{ upi_deep_link }}" class="btn btn-primary btn-block btn-lg" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <i data-lucide="smartphone" style="width: 18px; height: 18px;"></i>
+            <span>Pay with UPI App &bull; ₹{{ price|floatformat:0 }}</span>
+          </a>
+        </div>
+
+        <!-- Payee Details & Copy Chip -->
+        <div style="margin-top: 20px; padding: 14px; background: rgba(0, 0, 0, 0.2); border-radius: 8px; text-align: left; font-size: 0.8125rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="color: var(--text-muted);">UPI ID:</span>
+            <span class="copy-chip" onclick="copyText('{{ upi_id }}', this)" title="Click to copy">
+              <span>{{ upi_id }}</span>
+              <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+            </span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-muted);">Payee Name:</span>
+            <span style="color: var(--text-primary); font-weight: 600;">{{ payee_name }}</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Verification Submission Form -->
+      <div class="card" style="padding: 28px; background-color: var(--bg-sidebar); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);">
+        
+        <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-top: 0; margin-bottom: 6px;">
+          Submit Payment Verification
+        </h2>
+        <p style="color: var(--text-secondary); font-size: 0.8125rem; line-height: 1.45; margin-bottom: 20px;">
+          Once you complete the transfer, enter your 12-digit UPI reference (UTR) below so our team can approve your access.
+        </p>
+
+        <form method="POST" enctype="multipart/form-data" action="{% url 'subscriptions:manual_checkout' plan_code %}" id="manualPaymentForm">
+          {% csrf_token %}
+
+          <!-- UTR Input (Required, 12 digits) -->
+          <div class="form-group" style="margin-bottom: 18px;">
+            <label for="id_utr" style="display: block; font-size: 0.8125rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">
+              UPI Reference / UTR Number <span style="color: #ef4444;">*</span>
+            </label>
+            <input 
+              type="text" 
+              name="utr" 
+              id="id_utr" 
+              class="form-control" 
+              placeholder="e.g. 425612345678" 
+              required 
+              pattern="\d{12}" 
+              minlength="12" 
+              maxlength="12"
+              value="{{ entered_utr|default:'' }}"
+              style="width: 100%; padding: 10px 14px; font-family: monospace; font-size: 0.95rem; letter-spacing: 0.05em;"
+            >
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">
+              Must be exactly 12 digits found on your payment receipt / SMS.
+            </div>
+          </div>
+
+          <!-- Payer UPI ID (Optional) -->
+          <div class="form-group" style="margin-bottom: 18px;">
+            <label for="id_payer_upi" style="display: block; font-size: 0.8125rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">
+              Your UPI ID (Optional)
+            </label>
+            <input 
+              type="text" 
+              name="payer_upi_id" 
+              id="id_payer_upi" 
+              class="form-control" 
+              placeholder="e.g. yourname@okhdfcbank"
+              value="{{ entered_payer_upi|default:'' }}"
+              style="width: 100%; padding: 10px 14px; font-size: 0.875rem;"
+            >
+          </div>
+
+          <!-- Screenshot Upload (Optional, JPG/PNG/WEBP <= 2MB) -->
+          <div class="form-group" style="margin-bottom: 22px;">
+            <label for="id_screenshot" style="display: block; font-size: 0.8125rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">
+              Payment Screenshot (Optional)
+            </label>
+            <input 
+              type="file" 
+              name="screenshot" 
+              id="id_screenshot" 
+              class="form-control" 
+              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+              style="width: 100%; padding: 8px; font-size: 0.8125rem;"
+            >
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">
+              Accepted formats: JPG, PNG, WEBP (Max 2 MB). Speeds up verification.
+            </div>
+          </div>
+
+          <!-- Mandatory Notice Text -->
+          <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); padding: 12px 14px; border-radius: 8px; margin-bottom: 22px; font-size: 0.8125rem; color: #bae6fd; display: flex; gap: 8px; align-items: flex-start;">
+            <i data-lucide="info" style="width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; color: #38bdf8;"></i>
+            <span>
+              Your access will be activated after we verify your payment, usually within 2 to 6 hours. Payments by UPI only.
+            </span>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg" id="submitPaymentBtn" style="font-weight: 700;">
+            Submit for Verification &rarr;
+          </button>
+        </form>
+
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<script>
+  function copyText(text, el) {
+    navigator.clipboard.writeText(text).then(() => {
+      const original = el.innerHTML;
+      el.innerHTML = '<span style="color: var(--accent-primary);">Copied! ✓</span>';
+      setTimeout(() => {
+        el.innerHTML = original;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }, 2000);
+    }).catch(err => {
+      console.error('Could not copy:', err);
+    });
+  }
+</script>
+{% endblock %}

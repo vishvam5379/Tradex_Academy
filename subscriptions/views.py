@@ -1,3 +1,4 @@
+import os
 import json
 from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
@@ -29,6 +30,11 @@ def initiate_upi_payment(request, plan_key=None):
     Blocks duplicate active subscription for the same plan.
     """
     plan = plan_key or request.GET.get('plan', 'starter')
+    payment_mode = (os.getenv('PAYMENT_MODE') or getattr(settings, 'PAYMENT_MODE', 'razorpay')).lower().strip()
+    if payment_mode == 'manual_upi':
+        from .views_manual import normalize_plan_key
+        return redirect('subscriptions:manual_checkout', plan_key=normalize_plan_key(plan))
+
     plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
 
     normalized_key = plan.lower().strip()
@@ -217,9 +223,15 @@ def razorpay_webhook_view(request):
 @login_required
 def checkout_view(request):
     """
-    Redirects checkout requests to UPI-only payment flow.
+    Redirects checkout requests to UPI payment flow:
+    - 'manual_upi': goes to manual checkout page
+    - 'razorpay': goes to Razorpay UPI link flow
     """
     plan = request.GET.get('plan', 'starter')
+    payment_mode = (os.getenv('PAYMENT_MODE') or getattr(settings, 'PAYMENT_MODE', 'razorpay')).lower().strip()
+    if payment_mode == 'manual_upi':
+        from .views_manual import normalize_plan_key
+        return redirect('subscriptions:manual_checkout', plan_key=normalize_plan_key(plan))
     return redirect(f"/subscriptions/pay/?plan={plan}")
 
 

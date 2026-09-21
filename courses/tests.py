@@ -67,9 +67,9 @@ class CoursesTests(TestCase):
     def test_video_player_locked_for_unsubscribed_user(self):
         self.client.login(email='free@test.com', password='Pass123')
         response = self.client.get(reverse('courses:video_player', args=['forex', 'commodity', self.gold_video.id]))
-        # Must strictly redirect to subscription plan / checkout page
+        # Must strictly redirect to subscription plan / payment page
         self.assertEqual(response.status_code, 302)
-        self.assertIn('/subscriptions/checkout/', response.url)
+        self.assertIn('/subscriptions/pay/pro/', response.url)
 
     def test_video_player_unlocked_for_subscribed_user(self):
         self.client.login(email='pro@test.com', password='Pass123')

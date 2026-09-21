@@ -8,7 +8,7 @@ import json
 import hmac
 import hashlib
 
-from subscriptions.models import Subscription, Order
+from subscriptions.models import Subscription, Order, ManualPayment
 from courses.models import Category, SubCategory, Video
 
 User = get_user_model()
@@ -228,4 +228,191 @@ class SubscriptionsTests(TestCase):
         res_blocked_forex = self.client.get(url_forex)
         self.assertEqual(res_blocked_forex.status_code, 302)
         self.assertIn('/subscriptions/pay/pro/', res_blocked_forex.url)
+
+
+class ManualUPITests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='student@test.com',
+            name='Student Test',
+            password='Password123'
+        )
+        self.admin_user = User.objects.create_user(
+            email='admin@tradex.com',
+            name='Tradex Admin',
+            password='Password123'
+        )
+        self.other_user = User.objects.create_user(
+            email='hacker@test.com',
+            name='Random User',
+            password='Password123'
+        )
+
+    def test_manual_checkout_anonymous_redirects_to_login(self):
+        url = reverse('subscriptions:manual_checkout', args=['starter'])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/signin/', response.url)
+
+    def test_manual_checkout_renders_qr_and_details(self):
+        self.client.login(email='student@test.com', password='Password123')
+        url = reverse('subscriptions:manual_checkout', args=['starter'])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Indian Market Foundation')
+        self.assertContains(response, 'data:image/png;base64,')
+        self.assertContains(response, 'upi://pay?')
+
+    def test_manual_checkout_blocks_active_subscription(self):
+        self.client.login(email='student@test.com', password='Password123')
+        Subscription.objects.create(
+            user=self.user,
+            plan_type='starter',
+            plan_name='Indian Market Foundation',
+            status='ACTIVE',
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(days=90),
+            amount_paid=3999.00
+        )
+        url = reverse('subscriptions:manual_checkout', args=['starter'])
+        response = self.client.get(url)
+        self.assertRedirects(response, reverse('courses:dashboard'))
+
+    def test_manual_checkout_invalid_utr_validation(self):
+        self.client.login(email='student@test.com', password='Password123')
+        url = reverse('subscriptions:manual_checkout', args=['starter'])
+        
+        # Non 12-digit UTR
+        response = self.client.post(url, {'utr': '12345', 'payer_upi_id': 'student@okaxis'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Please enter a valid 12-digit UPI transaction reference')
+        self.assertEqual(ManualPayment.objects.count(), 0)
+
+        # Non-numeric UTR
+        response = self.client.post(url, {'utr': '12345678ABCD', 'payer_upi_id': ''})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Please enter a valid 12-digit UPI transaction reference')
+        self.assertEqual(ManualPayment.objects.count(), 0)
+
+    def test_manual_checkout_valid_submission_creates_pending(self):
+        self.client.login(email='student@test.com', password='Password123')
+        url = reverse('subscriptions:manual_checkout', args=['starter'])
+        response = self.client.post(url, {
+            'utr': '987654321012',
+            'payer_upi_id': 'student@okhdfc'
+        })
+        self.assertRedirects(response, reverse('courses:dashboard'))
+
+        payment = ManualPayment.objects.filter(user=self.user, utr='987654321012').first()
+        self.assertIsNotNone(payment)
+        self.assertEqual(payment.status, 'pending')
+        self.assertEqual(payment.plan_key, 'starter')
+        self.assertEqual(payment.amount, 3999.00)
+        self.assertEqual(payment.payer_upi_id, 'student@okhdfc')
+
+    def test_manual_checkout_blocks_duplicate_utr(self):
+        ManualPayment.objects.create(
+            user=self.other_user,
+            plan_key='starter',
+            amount=3999.00,
+            status='pending',
+            utr='112233445566'
+        )
+        self.client.login(email='student@test.com', password='Password123')
+        url = reverse('subscriptions:manual_checkout', args=['starter'])
+        response = self.client.post(url, {'utr': '112233445566'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'This UTR / transaction reference has already been submitted.')
+
+    def test_admin_payments_security(self):
+        # 1. Anonymous gets redirect to login
+        url = reverse('subscriptions:admin_payments')
+        res_anon = self.client.get(url)
+        self.assertEqual(res_anon.status_code, 302)
+
+        # 2. Non-admin user gets 404
+        self.client.login(email='hacker@test.com', password='Password123')
+        res_forbidden = self.client.get(url)
+        self.assertEqual(res_forbidden.status_code, 404)
+
+        # 3. Admin user in ADMIN_EMAILS gets 200
+        self.client.login(email='admin@tradex.com', password='Password123')
+        with self.settings(ADMIN_EMAILS='admin@tradex.com'):
+            res_admin = self.client.get(url)
+            self.assertEqual(res_admin.status_code, 200)
+            self.assertContains(res_admin, 'Manual UPI Payments')
+
+    def test_admin_payment_approval_flow(self):
+        payment = ManualPayment.objects.create(
+            user=self.user,
+            plan_key='starter',
+            amount=3999.00,
+            status='pending',
+            utr='998877665544'
+        )
+
+        approve_url = reverse('subscriptions:admin_payment_approve', args=[payment.id])
+
+        # Non-admin cannot approve
+        self.client.login(email='hacker@test.com', password='Password123')
+        res = self.client.post(approve_url)
+        self.assertEqual(res.status_code, 404)
+
+        # Admin approves
+        self.client.login(email='admin@tradex.com', password='Password123')
+        with self.settings(ADMIN_EMAILS='admin@tradex.com'):
+            res_approve = self.client.post(approve_url)
+            self.assertRedirects(res_approve, reverse('subscriptions:admin_payments'))
+
+            payment.refresh_from_db()
+            self.assertEqual(payment.status, 'approved')
+            self.assertEqual(payment.reviewed_by, self.admin_user)
+            self.assertIsNotNone(payment.reviewed_at)
+
+            # Subscription created
+            sub = Subscription.objects.filter(user=self.user, status='ACTIVE').first()
+            self.assertIsNotNone(sub)
+            self.assertEqual(sub.plan_type, 'starter')
+            self.assertTrue(sub.is_currently_active)
+
+            # Idempotent: approve again should not double extend
+            end_date_before = sub.end_date
+            self.client.post(approve_url)
+            sub.refresh_from_db()
+            self.assertEqual(sub.end_date, end_date_before)
+
+    def test_admin_payment_rejection_flow(self):
+        payment = ManualPayment.objects.create(
+            user=self.user,
+            plan_key='starter',
+            amount=3999.00,
+            status='pending',
+            utr='554433221100'
+        )
+
+        reject_url = reverse('subscriptions:admin_payment_reject', args=[payment.id])
+
+        # Admin rejects
+        self.client.login(email='admin@tradex.com', password='Password123')
+        with self.settings(ADMIN_EMAILS='admin@tradex.com'):
+            res = self.client.post(reject_url, {'reject_reason': 'UTR not found in bank credits'})
+            self.assertRedirects(res, reverse('subscriptions:admin_payments'))
+
+            payment.refresh_from_db()
+            self.assertEqual(payment.status, 'rejected')
+            self.assertEqual(payment.reject_reason, 'UTR not found in bank credits')
+            self.assertEqual(payment.reviewed_by, self.admin_user)
+
+            # User receives no subscription
+            self.assertEqual(Subscription.objects.filter(user=self.user).count(), 0)
+
+    def test_payment_mode_routing_to_manual_checkout(self):
+        self.client.login(email='student@test.com', password='Password123')
+        with self.settings(PAYMENT_MODE='manual_upi'):
+            res = self.client.get(reverse('subscriptions:initiate_upi_payment_plan', args=['starter']))
+            self.assertRedirects(res, reverse('subscriptions:manual_checkout', args=['starter']))
+
+            res_checkout = self.client.get(reverse('subscriptions:checkout') + '?plan=starter')
+            self.assertRedirects(res_checkout, reverse('subscriptions:manual_checkout', args=['starter']))
+
 

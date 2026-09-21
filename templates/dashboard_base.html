@@ -71,6 +71,15 @@
         </a>
       </div>
 
+      {% if is_manual_upi_admin %}
+      <div class="nav-item">
+        <a href="{% url 'subscriptions:admin_payments' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_payments' %}active{% endif %}" style="color: #facc15;">
+          <i data-lucide="shield-check" style="width: 15px; height: 15px; color: #facc15;"></i>
+          <span>🛡️ Admin Payments</span>
+        </a>
+      </div>
+      {% endif %}
+
       <div class="nav-section-title" style="margin-top: 16px;">📈 Markets (Curriculum)</div>
 
       <!-- Categories & Subcategories Tree -->
@@ -157,6 +166,13 @@
         </a>
         <a href="{% url 'subscriptions:checkout' %}" class="btn btn-primary btn-sm">
           Subscribe (₹3,999)
+        </a>
+        {% endif %}
+
+        {% if is_manual_upi_admin %}
+        <a href="{% url 'subscriptions:admin_payments' %}" class="badge badge-gray" style="text-decoration: none; color: #facc15; border-color: rgba(250, 204, 21, 0.4); display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;" title="Manual UPI Verification Terminal">
+          <i data-lucide="shield" style="width: 12px; height: 12px;"></i>
+          <span>Admin</span>
         </a>
         {% endif %}
 
