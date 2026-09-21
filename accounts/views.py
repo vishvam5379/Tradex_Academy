@@ -16,26 +16,39 @@ def signup_view(request):
     if request.user.is_authenticated:
         return redirect('courses:dashboard')
 
+    next_url = request.GET.get('next') or request.POST.get('next')
+    plan = request.GET.get('plan') or request.POST.get('plan')
+
     if request.method == 'POST':
         form = SignUpForm(request.POST)
         if form.is_valid():
             user = form.save()
             login(request, user, backend='accounts.backends.EmailAuthBackend')
-            messages.success(request, f"Welcome to the Trading Academy, {user.name}! Your account has been created.")
+            messages.success(request, f"Welcome to Tradex Academy, {user.name}! Your account has been created.")
+            
+            if plan:
+                return redirect(f"/subscriptions/checkout/?plan={plan}")
+            if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+                return redirect(next_url)
             return redirect('courses:dashboard')
         else:
             messages.error(request, "Please correct the errors below to complete your registration.")
     else:
         form = SignUpForm()
 
-    return render(request, 'accounts/signup.html', {'form': form})
+    return render(request, 'accounts/signup.html', {
+        'form': form,
+        'next': next_url,
+        'plan': plan,
+    })
 
 
 def signin_view(request):
     if request.user.is_authenticated:
         return redirect('courses:dashboard')
 
-    next_url = request.GET.get('next', 'courses:dashboard')
+    next_url = request.GET.get('next') or request.POST.get('next')
+    plan = request.GET.get('plan') or request.POST.get('plan')
 
     if request.method == 'POST':
         form = SignInForm(request.POST)
@@ -48,7 +61,11 @@ def signin_view(request):
                 if user.is_active:
                     login(request, user)
                     messages.success(request, f"Welcome back, {user.name}!")
-                    return redirect(request.POST.get('next') or next_url)
+                    if plan:
+                        return redirect(f"/subscriptions/checkout/?plan={plan}")
+                    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+                        return redirect(next_url)
+                    return redirect('courses:dashboard')
                 else:
                     messages.error(request, "Your account has been deactivated. Please contact support.")
             else:
@@ -60,7 +77,8 @@ def signin_view(request):
 
     return render(request, 'accounts/signin.html', {
         'form': form,
-        'next': next_url
+        'next': next_url,
+        'plan': plan,
     })
 
 

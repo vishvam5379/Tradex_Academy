@@ -59,7 +59,7 @@ class Subscription(models.Model):
     @property
     def is_currently_active(self):
         """Dynamic check: must have ACTIVE status and end_date in future"""
-        return self.status == 'ACTIVE' and self.end_date > timezone.now()
+        return self.status == 'ACTIVE' and bool(self.end_date and self.end_date > timezone.now())
 
     def grants_access_to(self, tier_required):
         """
@@ -85,8 +85,8 @@ class Subscription(models.Model):
 
     @property
     def validity_percentage_left(self):
-        """Percentage of the 60-day validity remaining for progress bars"""
-        if not self.is_currently_active:
+        """Percentage of the validity remaining for progress bars"""
+        if not self.is_currently_active or not self.start_date or not self.end_date:
             return 0
         total_duration = (self.end_date - self.start_date).total_seconds()
         remaining = (self.end_date - timezone.now()).total_seconds()

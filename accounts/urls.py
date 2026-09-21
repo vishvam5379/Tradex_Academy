@@ -1,5 +1,6 @@
 from django.urls import path, reverse_lazy
 from django.contrib.auth import views as auth_views
+from allauth.socialaccount.providers.google import views as google_views
 from . import views
 
 app_name = 'accounts'
@@ -11,9 +12,10 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('profile/', views.profile_view, name='profile'),
 
-    # Google OAuth 2.0
-    path('google/login/', views.google_login_view, name='google_login'),
-    path('google/callback/', views.google_callback_view, name='google_callback'),
+    # Google OAuth 2.0 (Django Allauth). Keep /callback/ for existing Google Cloud clients.
+    path('google/login/', google_views.oauth2_login, name='google_login'),
+    path('google/callback/', google_views.oauth2_callback, name='google_callback'),
+    path('google/login/callback/', google_views.oauth2_callback, name='google_callback_alias'),
 
     # Password Reset Flow
     path(

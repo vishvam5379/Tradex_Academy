@@ -76,3 +76,23 @@ class CoursesTests(TestCase):
         response = self.client.get(reverse('courses:video_player', args=['forex', 'commodity', self.gold_video.id]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Gold Trading Strategy')
+
+    def test_youtube_embed_url_conversion(self):
+        video = Video(video_url='https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+        self.assertEqual(video.youtube_embed_url, 'https://www.youtube.com/embed/dQw4w9WgXcQ')
+        video_short = Video(video_url='https://youtu.be/dQw4w9WgXcQ')
+        self.assertEqual(video_short.youtube_embed_url, 'https://www.youtube.com/embed/dQw4w9WgXcQ')
+
+    def test_expired_combo_subscription_denies_vip_access(self):
+        expired_combo_user = User.objects.create_user(email='expired_combo@test.com', name='Expired Combo', password='Pass123')
+        Subscription.objects.create(
+            user=expired_combo_user,
+            status='ACTIVE',
+            plan_type='combo',
+            start_date=timezone.now() - timedelta(days=200),
+            end_date=timezone.now() - timedelta(days=50),
+            amount_paid=12500.00
+        )
+        self.client.login(email='expired_combo@test.com', password='Pass123')
+        response = self.client.get(reverse('courses:community'))
+        self.assertFalse(response.context['has_combo_access'])

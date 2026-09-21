@@ -124,6 +124,25 @@ class Video(models.Model):
         return f"{minutes:02d}:{seconds:02d}"
 
     @property
+    def youtube_embed_url(self):
+        """Converts youtube watch or share URL into embed URL if needed."""
+        url = self.video_url or ''
+        if 'youtube.com/embed/' in url:
+            return url
+        if 'youtube.com/watch' in url and 'v=' in url:
+            import urllib.parse
+            parsed = urllib.parse.urlparse(url)
+            query = urllib.parse.parse_qs(parsed.query)
+            video_id = query.get('v', [''])[0]
+            if video_id:
+                return f"https://www.youtube.com/embed/{video_id}"
+        if 'youtu.be/' in url:
+            video_id = url.split('youtu.be/')[-1].split('?')[0]
+            if video_id:
+                return f"https://www.youtube.com/embed/{video_id}"
+        return url
+
+    @property
     def get_thumbnail_src(self):
         if self.thumbnail:
             return self.thumbnail.url

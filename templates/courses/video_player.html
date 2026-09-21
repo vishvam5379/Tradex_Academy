@@ -20,7 +20,7 @@
         </video>
       {% elif video.video_url %}
         {% if 'youtube.com' in video.video_url or 'youtu.be' in video.video_url %}
-          <iframe src="{{ video.video_url }}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          <iframe src="{{ video.youtube_embed_url }}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
         {% else %}
           <video controls autoplay controlsList="nodownload" poster="{{ video.get_thumbnail_src }}" id="mainLessonPlayer">
             <source src="{{ video.video_url }}" type="video/mp4">

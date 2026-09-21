@@ -105,7 +105,7 @@ def dashboard_home(request):
     has_combo_access = bool(
         request.user.is_staff or 
         request.user.is_superuser or 
-        (active_sub and active_sub.plan_type == 'combo')
+        (active_sub and active_sub.plan_type == 'combo' and active_sub.is_currently_active)
     )
 
     # Exclusive Community Trade Setups & Analysis Data

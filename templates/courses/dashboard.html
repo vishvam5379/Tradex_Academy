@@ -525,7 +525,10 @@
     switchDashboardSection(hash);
   }
 
+  let activeDashChannelSlug = 'announcements';
+
   function filterDashChannel(channelSlug, btnEl) {
+    if (channelSlug) activeDashChannelSlug = channelSlug;
     document.querySelectorAll('.tg-dash-chan-btn').forEach(btn => btn.classList.remove('active'));
     if (btnEl) btnEl.classList.add('active');
 
@@ -544,7 +547,7 @@
     const content = input.value.trim();
     if (!content) return;
 
-    fetch('/api/community/channel/trade-setups/send/', {
+    fetch(`/api/community/channel/${activeDashChannelSlug}/send/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -557,6 +560,8 @@
       if (data.status === 'success') {
         input.value = '';
         location.reload();
+      } else {
+        alert(data.message || 'Error posting message');
       }
     });
   }

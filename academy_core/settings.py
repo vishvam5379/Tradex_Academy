@@ -57,12 +57,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+    'django.contrib.sites',
+
+    # Django Allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+
     # Custom apps
     'accounts.apps.AccountsConfig',
     'courses.apps.CoursesConfig',
     'subscriptions.apps.SubscriptionsConfig',
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -71,6 +80,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -108,6 +118,7 @@ IS_VERCEL = 'VERCEL' in os.environ or os.getenv('IS_VERCEL', 'False').lower() in
 database_url = (os.getenv('DATABASE_URL') or '').strip()
 raw_use_sqlite = os.getenv('USE_SQLITE')
 db_host = (os.getenv('DB_HOST') or '').strip()
+db_user = (os.getenv('DB_USER') or 'postgres').strip()
 
 # Check if remote database credentials (Supabase) are provided
 has_remote_db = bool(database_url or db_host)
@@ -121,6 +132,25 @@ else:
 # On Vercel, if USE_SQLITE=False was set but no Supabase host was configured, fall back to SQLite to prevent crashing
 if IS_VERCEL and not USE_SQLITE and not has_remote_db:
     USE_SQLITE = True
+
+# Django's test runner should never create/drop tables on the remote database.
+if 'test' in sys.argv:
+    USE_SQLITE = True
+
+# Supabase direct host (db.<project>.supabase.co) resolves to IPv6 only.
+# AWS Lambda / Vercel does not support outbound IPv6, which causes:
+# psycopg2.OperationalError: Cannot assign requested address
+# Automatically adapt to Supabase's IPv4 connection pooler in ap-southeast-2 with pooler username.
+if 'db.boqxnyjlqsyhnjkfddjk.supabase.co' in db_host:
+    db_host = 'aws-0-ap-southeast-2.pooler.supabase.com'
+    if db_user == 'postgres':
+        db_user = 'postgres.boqxnyjlqsyhnjkfddjk'
+
+if database_url and 'db.boqxnyjlqsyhnjkfddjk.supabase.co' in database_url:
+    database_url = database_url.replace(
+        'db.boqxnyjlqsyhnjkfddjk.supabase.co',
+        'aws-0-ap-southeast-2.pooler.supabase.com'
+    ).replace('://postgres:', '://postgres.boqxnyjlqsyhnjkfddjk:')
 
 if USE_SQLITE:
     if IS_VERCEL:
@@ -148,7 +178,7 @@ elif database_url:
         DATABASES = {
             'default': dj_database_url.config(
                 default=database_url,
-                conn_max_age=600,
+                conn_max_age=0 if IS_VERCEL else 60,
                 conn_health_checks=True,
                 ssl_require=True,
             )
@@ -169,10 +199,11 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.getenv('DB_NAME', 'postgres'),
-            'USER': os.getenv('DB_USER', 'postgres'),
+            'USER': db_user,
             'PASSWORD': os.getenv('DB_PASSWORD', ''),
             'HOST': db_host,
             'PORT': os.getenv('DB_PORT', '5432'),
+            'CONN_MAX_AGE': 0 if IS_VERCEL else 60,
             'OPTIONS': {
                 'sslmode': 'require',
             },
@@ -198,10 +229,11 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Authentication Backends (supports login via email)
+# Authentication Backends (supports email login and Django Allauth social accounts)
 AUTHENTICATION_BACKENDS = [
-    'accounts.backends.EmailAuthBackend',
     'django.contrib.auth.backends.ModelBackend',
+    'accounts.backends.EmailAuthBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
 # Internationalization
@@ -233,10 +265,13 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Auth URLs
+# Auth URLs (named routes — dashboard lives at /dashboard/, not /courses/dashboard/)
 LOGIN_URL = 'accounts:signin'
 LOGIN_REDIRECT_URL = 'courses:dashboard'
-LOGOUT_REDIRECT_URL = 'courses:landing'
+LOGOUT_REDIRECT_URL = 'accounts:signin'
+
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Tradex Academy <noreply@tradex.academy>')
 
 # Message Tags mapping to Tailwind/Modern alert classes
 from django.contrib.messages import constants as messages
@@ -249,7 +284,7 @@ MESSAGE_TAGS = {
 }
 
 # Razorpay & Multi-Tier Subscription Configuration
-RAZORPAY_KEY_ID = (os.getenv('RAZORPAY_KEY_ID') or '').strip() or 'rzp_test_mock_key_id'
+RAZORPAY_KEY_ID = (os.getenv('RAZORPAY_KEY_ID') or '').strip() or 'rzp_test_placeholder_key_id'
 RAZORPAY_KEY_SECRET = (os.getenv('RAZORPAY_KEY_SECRET') or '').strip() or 'mock_secret_key'
 RAZORPAY_CURRENCY = (os.getenv('RAZORPAY_CURRENCY') or '').strip() or 'INR'
 
@@ -295,4 +330,59 @@ SUBSCRIPTION_DURATION_DAYS = 60
 GOOGLE_CLIENT_ID = (os.getenv('GOOGLE_CLIENT_ID') or '').strip()
 GOOGLE_CLIENT_SECRET = (os.getenv('GOOGLE_CLIENT_SECRET') or '').strip()
 GOOGLE_REDIRECT_URI = (os.getenv('GOOGLE_REDIRECT_URI') or '').strip()
+
+# Email (used by password reset, etc.)
+# Without this, Django defaults to SMTP on localhost:25, which does not exist
+# on Vercel and crashes the password-reset flow with a connection error.
+EMAIL_HOST = (os.getenv('EMAIL_HOST') or '').strip()
+if EMAIL_HOST:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_PORT = _safe_int_env('EMAIL_PORT', 587)
+    EMAIL_HOST_USER = (os.getenv('EMAIL_HOST_USER') or '').strip()
+    EMAIL_HOST_PASSWORD = (os.getenv('EMAIL_HOST_PASSWORD') or '').strip()
+    EMAIL_USE_TLS = (os.getenv('EMAIL_USE_TLS', 'True')).lower() in ('true', '1', 'yes')
+    DEFAULT_FROM_EMAIL = (os.getenv('DEFAULT_FROM_EMAIL') or EMAIL_HOST_USER or 'no-reply@tradexacademy.com')
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = 'no-reply@tradexacademy.com'
+GOOGLE_OAUTH_ENABLED = bool(GOOGLE_CLIENT_ID)
+
+# Django Allauth Configuration
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/accounts/signin/'
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https' if IS_VERCEL else 'http'
+
+# Social Account Configuration
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+SOCIALACCOUNT_LOGIN_ON_GET = True
+
+# Custom Adapters for Custom User Model
+SOCIALACCOUNT_ADAPTER = 'accounts.adapters.CustomSocialAccountAdapter'
+ACCOUNT_ADAPTER = 'accounts.adapters.CustomAccountAdapter'
+
+# Google OAuth 2.0 Provider Configuration for Allauth
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': GOOGLE_CLIENT_ID,
+            'secret': GOOGLE_CLIENT_SECRET,
+            'key': ''
+        },
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'OAUTH_PKCE_ENABLED': True,
+        'FETCH_USERINFO': True,
+    }
+}
 
