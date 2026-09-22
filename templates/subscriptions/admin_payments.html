@@ -425,7 +425,7 @@
           <td style="text-align: right;">
             {% if item.obj.status == 'pending' %}
             <div style="display: inline-flex; align-items: center; gap: 8px;">
-              <form method="POST" action="{% url 'subscriptions:admin_payment_approve' item.obj.id %}" onsubmit="return confirm('Confirm approval for UTR {{ item.obj.utr }}? This will activate subscriber access for {{ item.obj.plan_name }}.');">
+              <form method="POST" action="{% url 'root_admin_payment_approve' item.obj.id %}" onsubmit="return confirm('Confirm approval for UTR {{ item.obj.utr }}? This will activate subscriber access for {{ item.obj.plan_name }}.');">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-primary btn-sm" style="background: #16a34a; border-color: #15803d; padding: 6px 12px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;" title="Approve payment and activate plan">
                   <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>

@@ -185,13 +185,21 @@ def manual_checkout_view(request, plan_key):
     return render(request, 'subscriptions/manual_checkout.html', base_context)
 
 
-@login_required
+def is_admin_request(request):
+    """
+    Server-side verification that request is from an authenticated user
+    whose email is in settings.ADMIN_EMAILS or os.getenv('ADMIN_EMAILS').
+    """
+    user = getattr(request, 'user', None)
+    return is_admin_email(user)
+
+
 def admin_payments_view(request):
     """
     Private Admin page for reviewing manual UPI payments.
-    Accessible ONLY to users whose email is in ADMIN_EMAILS. Returns 404 for all others.
+    Accessible ONLY to authenticated users whose email is in ADMIN_EMAILS. Returns 404 for all others.
     """
-    if not is_admin_email(request.user):
+    if not is_admin_request(request):
         raise Http404("Page not found")
 
     status_filter = request.GET.get('status', 'pending')
@@ -225,24 +233,25 @@ def admin_payments_view(request):
     })
 
 
-@login_required
 @require_POST
 def admin_payment_approve_view(request, payment_id):
     """
     Approve manual payment, set reviewed_at and reviewed_by, and create or extend subscription.
     Idempotent: approving twice does not double-extend.
-    Unlocks all course videos for the subscriber and sends instant confirmation notification.
+    Unlocks course videos for the subscriber and sends instant confirmation notification.
     """
-    if not is_admin_email(request.user):
+    if not is_admin_request(request):
         raise Http404("Page not found")
 
-    payment = get_object_or_404(ManualPayment, id=payment_id)
-
     with transaction.atomic():
-        payment = ManualPayment.objects.select_for_update().get(id=payment_id)
+        payment = ManualPayment.objects.select_for_update().filter(id=payment_id).first()
+        if not payment:
+            raise Http404("Payment not found")
+
+        # Idempotent: approving an already-approved row must do nothing on a second click
         if payment.status == 'approved':
             messages.info(request, f"Payment #{payment.id} is already approved.")
-            return redirect('subscriptions:admin_payments')
+            return redirect('root_admin_payments')
 
         plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
         plan_info = plans.get(payment.plan_key, plans.get('starter', {'name': 'Subscription', 'duration_days': 90}))
@@ -266,22 +275,31 @@ def admin_payment_approve_view(request, payment_id):
         payment.user_notified = False
         payment.save(update_fields=['status', 'reviewed_at', 'reviewed_by', 'user_notified'])
 
-        # Activate or extend subscription
-        # If user has an active subscription, extend from its current end_date
+        # Course-specific matching subscription:
+        # starter / standard -> Indian Market course
+        # pro / gold_strategy -> Forex Gold course
+        # elite / combo -> All courses (Complete Trader)
+        if assigned_plan_key in ['elite', 'combo']:
+            matching_plans = ['elite', 'combo']
+        elif assigned_plan_key in ['pro', 'gold_strategy']:
+            matching_plans = ['pro', 'gold_strategy']
+        else:
+            matching_plans = ['starter', 'standard']
+
         existing_sub = Subscription.objects.filter(
             user=payment.user,
             status='ACTIVE',
+            plan_type__in=matching_plans,
             end_date__gt=now
         ).order_by('-end_date').first()
 
         if existing_sub:
+            # Extend from current expiry
             existing_sub.end_date = existing_sub.end_date + timedelta(days=duration_days)
-            if assigned_plan_key in ['elite', 'combo']:
-                existing_sub.plan_type = assigned_plan_key
-                existing_sub.plan_name = assigned_plan_name
             existing_sub.amount_paid = (existing_sub.amount_paid or 0) + payment.amount
-            existing_sub.save()
+            existing_sub.save(update_fields=['end_date', 'amount_paid', 'updated_at'])
         else:
+            # Create matching subscription row (expiry = now + plan validity days)
             Subscription.objects.create(
                 user=payment.user,
                 plan_type=assigned_plan_key,
@@ -335,24 +353,28 @@ def admin_payment_approve_view(request, payment_id):
         request,
         f"Payment #{payment.id} (UTR: {payment.utr}) approved! Access unlocked and confirmation notification sent to {payment.user.email}."
     )
-    return redirect('subscriptions:admin_payments')
+    return redirect('root_admin_payments')
 
 
-@login_required
 @require_POST
 def admin_payment_reject_view(request, payment_id):
     """
     Reject manual payment with a reason. No subscription is granted.
     Notifies the subscriber of the rejection.
     """
-    if not is_admin_email(request.user):
+    if not is_admin_request(request):
         raise Http404("Page not found")
 
-    payment = get_object_or_404(ManualPayment, id=payment_id)
-    reason = request.POST.get('reject_reason', '').strip() or 'Payment reference not found or amount incorrect.'
+    reason = request.POST.get('reject_reason', '').strip()
+    if not reason:
+        messages.error(request, "A rejection reason is required.")
+        return redirect('root_admin_payments')
 
     with transaction.atomic():
-        payment = ManualPayment.objects.select_for_update().get(id=payment_id)
+        payment = ManualPayment.objects.select_for_update().filter(id=payment_id).first()
+        if not payment:
+            raise Http404("Payment not found")
+
         payment.status = 'rejected'
         payment.reject_reason = reason
         payment.reviewed_at = timezone.now()
@@ -369,7 +391,7 @@ def admin_payment_reject_view(request, payment_id):
         )
 
     messages.warning(request, f"Payment #{payment.id} marked as rejected and user notified.")
-    return redirect('subscriptions:admin_payments')
+    return redirect('root_admin_payments')
 
 
 @login_required

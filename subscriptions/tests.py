@@ -316,15 +316,20 @@ class ManualUPITests(TestCase):
         self.assertContains(response, 'This UTR / transaction reference has already been submitted.')
 
     def test_admin_payments_security(self):
-        # 1. Anonymous gets redirect to login
+        # 1. Anonymous visitor gets 404 (not a 302 login redirect, does not leak page existence)
         url = reverse('subscriptions:admin_payments')
         res_anon = self.client.get(url)
-        self.assertEqual(res_anon.status_code, 302)
+        self.assertEqual(res_anon.status_code, 404)
+
+        res_root_anon = self.client.get('/admin/payments/')
+        self.assertEqual(res_root_anon.status_code, 404)
 
         # 2. Non-admin user gets 404
         self.client.login(email='hacker@test.com', password='Password123')
         res_forbidden = self.client.get(url)
         self.assertEqual(res_forbidden.status_code, 404)
+        res_root_forbidden = self.client.get('/admin/payments/')
+        self.assertEqual(res_root_forbidden.status_code, 404)
 
         # 3. Admin user in ADMIN_EMAILS gets 200
         self.client.login(email='admin@tradex.com', password='Password123')
@@ -332,6 +337,10 @@ class ManualUPITests(TestCase):
             res_admin = self.client.get(url)
             self.assertEqual(res_admin.status_code, 200)
             self.assertContains(res_admin, 'Manual UPI Payments')
+
+            res_root_admin = self.client.get('/admin/payments/')
+            self.assertEqual(res_root_admin.status_code, 200)
+            self.assertContains(res_root_admin, 'Manual UPI Payments')
 
     def test_admin_payment_approval_flow(self):
         payment = ManualPayment.objects.create(
@@ -344,7 +353,7 @@ class ManualUPITests(TestCase):
 
         approve_url = reverse('subscriptions:admin_payment_approve', args=[payment.id])
 
-        # Non-admin cannot approve
+        # Non-admin cannot approve (returns 404)
         self.client.login(email='hacker@test.com', password='Password123')
         res = self.client.post(approve_url)
         self.assertEqual(res.status_code, 404)
@@ -353,7 +362,7 @@ class ManualUPITests(TestCase):
         self.client.login(email='admin@tradex.com', password='Password123')
         with self.settings(ADMIN_EMAILS='admin@tradex.com'):
             res_approve = self.client.post(approve_url)
-            self.assertRedirects(res_approve, reverse('subscriptions:admin_payments'))
+            self.assertRedirects(res_approve, reverse('root_admin_payments'))
 
             payment.refresh_from_db()
             self.assertEqual(payment.status, 'approved')
@@ -378,6 +387,37 @@ class ManualUPITests(TestCase):
             sub.refresh_from_db()
             self.assertEqual(sub.end_date, end_date_before)
 
+    def test_admin_payment_approval_extends_matching_subscription(self):
+        # User already has an active starter subscription expiring in 30 days
+        initial_end = timezone.now() + timedelta(days=30)
+        existing_sub = Subscription.objects.create(
+            user=self.user,
+            plan_type='starter',
+            plan_name='Indian Market Foundation',
+            amount_paid=3999.00,
+            status='ACTIVE',
+            start_date=timezone.now() - timedelta(days=60),
+            end_date=initial_end
+        )
+
+        payment = ManualPayment.objects.create(
+            user=self.user,
+            plan_key='starter',
+            amount=3999.00,
+            status='pending',
+            utr='778899001122'
+        )
+
+        approve_url = reverse('subscriptions:admin_payment_approve', args=[payment.id])
+        self.client.login(email='admin@tradex.com', password='Password123')
+        with self.settings(ADMIN_EMAILS='admin@tradex.com'):
+            self.client.post(approve_url)
+            existing_sub.refresh_from_db()
+            # Extended from current expiry: initial_end + 90 days
+            expected_min_end = initial_end + timedelta(days=89)
+            self.assertGreaterEqual(existing_sub.end_date, expected_min_end)
+            self.assertEqual(existing_sub.amount_paid, 7998.00)
+
     def test_admin_payment_approval_with_unlock_all(self):
         payment = ManualPayment.objects.create(
             user=self.user,
@@ -390,7 +430,7 @@ class ManualUPITests(TestCase):
         self.client.login(email='admin@tradex.com', password='Password123')
         with self.settings(ADMIN_EMAILS='admin@tradex.com'):
             res = self.client.post(approve_url, {'unlock_all': 'true'})
-            self.assertRedirects(res, reverse('subscriptions:admin_payments'))
+            self.assertRedirects(res, reverse('root_admin_payments'))
             sub = Subscription.objects.filter(user=self.user, status='ACTIVE').first()
             self.assertIsNotNone(sub)
             self.assertEqual(sub.plan_type, 'combo')
@@ -406,11 +446,17 @@ class ManualUPITests(TestCase):
 
         reject_url = reverse('subscriptions:admin_payment_reject', args=[payment.id])
 
-        # Admin rejects
+        # Admin attempts to reject without reason -> should fail and remain pending
         self.client.login(email='admin@tradex.com', password='Password123')
         with self.settings(ADMIN_EMAILS='admin@tradex.com'):
+            res_no_reason = self.client.post(reject_url, {'reject_reason': ''})
+            self.assertRedirects(res_no_reason, reverse('root_admin_payments'))
+            payment.refresh_from_db()
+            self.assertEqual(payment.status, 'pending')
+
+            # Admin rejects with valid reason
             res = self.client.post(reject_url, {'reject_reason': 'UTR not found in bank credits'})
-            self.assertRedirects(res, reverse('subscriptions:admin_payments'))
+            self.assertRedirects(res, reverse('root_admin_payments'))
 
             payment.refresh_from_db()
             self.assertEqual(payment.status, 'rejected')
