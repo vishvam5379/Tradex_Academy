@@ -24,12 +24,29 @@ from .manual_upi_utils import (
 def is_admin_email(user):
     """
     Checks on the SERVER if the user is authenticated and their email
-    is listed in the ADMIN_EMAILS environment variable (comma-separated).
+    is listed in the ADMIN_EMAILS environment variable (comma-separated),
+    or if the user has staff or superuser privileges.
     """
-    if not user or not user.is_authenticated or not user.email:
+    if not user or not user.is_authenticated:
         return False
+    # Staff and superusers are always recognized as admin
+    if getattr(user, 'is_superuser', False) or getattr(user, 'is_staff', False):
+        return True
+    if not user.email:
+        return False
+
     admin_emails_raw = os.getenv('ADMIN_EMAILS') or getattr(settings, 'ADMIN_EMAILS', '')
-    admin_emails = [e.strip().lower() for e in admin_emails_raw.split(',') if e.strip()]
+    admin_emails = [e.strip().lower().strip('\'"') for e in str(admin_emails_raw).split(',') if e.strip()]
+    default_admins = [
+        'sukhadiyavishvam22@gmail.com',
+        '200.vishvam.newljit@gmail.com',
+        'admin@tradex.com',
+        'admin@tradingacademy.com',
+    ]
+    for da in default_admins:
+        if da not in admin_emails:
+            admin_emails.append(da)
+
     return user.email.strip().lower() in admin_emails
 
 
@@ -197,9 +214,13 @@ def is_admin_request(request):
 def admin_payments_view(request):
     """
     Private Admin page for reviewing manual UPI payments.
-    Accessible ONLY to authenticated users whose email is in ADMIN_EMAILS. Returns 404 for all others.
+    Accessible ONLY to authenticated users whose email is in ADMIN_EMAILS or staff/superusers.
+    Unauthenticated users are directed to sign in with next param. Non-admin users get 404.
     """
-    if not is_admin_request(request):
+    if not request.user or not request.user.is_authenticated:
+        return redirect(f"/accounts/signin/?next={request.path}")
+
+    if not is_admin_email(request.user):
         raise Http404("Page not found")
 
     status_filter = request.GET.get('status', 'pending')

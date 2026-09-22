@@ -316,13 +316,15 @@ class ManualUPITests(TestCase):
         self.assertContains(response, 'This UTR / transaction reference has already been submitted.')
 
     def test_admin_payments_security(self):
-        # 1. Anonymous visitor gets 404 (not a 302 login redirect, does not leak page existence)
+        # 1. Anonymous visitor gets redirected to sign in with next parameter
         url = reverse('subscriptions:admin_payments')
         res_anon = self.client.get(url)
-        self.assertEqual(res_anon.status_code, 404)
+        self.assertEqual(res_anon.status_code, 302)
+        self.assertIn('/accounts/signin/', res_anon.url)
 
         res_root_anon = self.client.get('/admin/payments/')
-        self.assertEqual(res_root_anon.status_code, 404)
+        self.assertEqual(res_root_anon.status_code, 302)
+        self.assertIn('/accounts/signin/', res_root_anon.url)
 
         # 2. Non-admin user gets 404
         self.client.login(email='hacker@test.com', password='Password123')
@@ -341,6 +343,15 @@ class ManualUPITests(TestCase):
             res_root_admin = self.client.get('/admin/payments/')
             self.assertEqual(res_root_admin.status_code, 200)
             self.assertContains(res_root_admin, 'Manual UPI Payments')
+
+        # 4. Superuser / staff gets 200 even without explicit ADMIN_EMAILS
+        self.admin_user.is_staff = True
+        self.admin_user.is_superuser = True
+        self.admin_user.save()
+        self.client.login(email='admin@tradex.com', password='Password123')
+        with self.settings(ADMIN_EMAILS=''):
+            res_staff = self.client.get('/admin/payments/')
+            self.assertEqual(res_staff.status_code, 200)
 
     def test_admin_payment_approval_flow(self):
         payment = ManualPayment.objects.create(
