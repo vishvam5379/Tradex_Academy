@@ -11,6 +11,8 @@ from django.conf import settings
 from django.db import transaction
 from django.core.mail import send_mail
 
+import json
+import uuid
 from .models import Subscription, ManualPayment, UserNotification
 from .manual_upi_utils import (
     get_upi_config,
@@ -18,7 +20,9 @@ from .manual_upi_utils import (
     generate_upi_qr_data_uri,
     upload_screenshot_to_supabase,
     get_signed_screenshot_url,
+    get_supabase_storage_config,
 )
+from courses.lecture_storage import create_signed_upload_url
 
 
 def is_admin_email(user):
@@ -151,36 +155,46 @@ def manual_checkout_view(request, plan_key):
             context.update({'entered_utr': raw_utr, 'entered_payer_upi': payer_upi_id})
             return render(request, 'subscriptions/manual_checkout.html', context)
 
-        # Handle required screenshot upload (JPG/PNG/WEBP, max 2MB)
-        screenshot_path = None
-        if 'screenshot' not in request.FILES or not request.FILES['screenshot']:
-            # In automated test runner without files, allow fallback, else enforce required
-            import sys
-            if 'test' not in sys.argv:
-                messages.error(request, "Payment screenshot is required.")
-                context = dict(base_context)
-                context.update({'entered_utr': raw_utr, 'entered_payer_upi': payer_upi_id})
-                return render(request, 'subscriptions/manual_checkout.html', context)
+        # Handle screenshot: support direct-to-Supabase upload (screenshot_path)
+        # or legacy fallback (request.FILES['screenshot'])
+        screenshot_path = request.POST.get('screenshot_path', '').strip() or None
+
+        if not screenshot_path:
+            if 'screenshot' in request.FILES and request.FILES['screenshot']:
+                file_obj = request.FILES['screenshot']
+                if file_obj.size > 2 * 1024 * 1024:
+                    messages.error(request, "Payment screenshot must be smaller than 2 MB.")
+                    context = dict(base_context)
+                    context.update({'entered_utr': raw_utr, 'entered_payer_upi': payer_upi_id})
+                    return render(request, 'subscriptions/manual_checkout.html', context)
+
+                ext = os.path.splitext(file_obj.name)[1].lower()
+                if ext not in ['.jpg', '.jpeg', '.png', '.webp']:
+                    messages.error(request, "Only JPG, PNG, or WEBP image formats are supported for screenshot.")
+                    context = dict(base_context)
+                    context.update({'entered_utr': raw_utr, 'entered_payer_upi': payer_upi_id})
+                    return render(request, 'subscriptions/manual_checkout.html', context)
+
+                timestamp_str = int(timezone.now().timestamp())
+                target_filename = f"user_{request.user.id}_{clean_utr}_{timestamp_str}{ext}"
+                ok, res_path = upload_screenshot_to_supabase(file_obj, target_filename)
+                if ok:
+                    screenshot_path = res_path
+            else:
+                import sys
+                if 'test' not in sys.argv:
+                    messages.error(request, "Payment screenshot is required.")
+                    context = dict(base_context)
+                    context.update({'entered_utr': raw_utr, 'entered_payer_upi': payer_upi_id})
+                    return render(request, 'subscriptions/manual_checkout.html', context)
         else:
-            file_obj = request.FILES['screenshot']
-            if file_obj.size > 2 * 1024 * 1024:
-                messages.error(request, "Payment screenshot must be smaller than 2 MB.")
-                context = dict(base_context)
-                context.update({'entered_utr': raw_utr, 'entered_payer_upi': payer_upi_id})
-                return render(request, 'subscriptions/manual_checkout.html', context)
-
-            ext = os.path.splitext(file_obj.name)[1].lower()
+            # Re-validate extension on server
+            ext = os.path.splitext(screenshot_path)[1].lower()
             if ext not in ['.jpg', '.jpeg', '.png', '.webp']:
-                messages.error(request, "Only JPG, PNG, or WEBP image formats are supported for screenshot.")
+                messages.error(request, "Invalid screenshot file format. Allowed: JPG, PNG, WEBP.")
                 context = dict(base_context)
                 context.update({'entered_utr': raw_utr, 'entered_payer_upi': payer_upi_id})
                 return render(request, 'subscriptions/manual_checkout.html', context)
-
-            timestamp_str = int(timezone.now().timestamp())
-            target_filename = f"user_{request.user.id}_{clean_utr}_{timestamp_str}{ext}"
-            ok, res_path = upload_screenshot_to_supabase(file_obj, target_filename)
-            if ok:
-                screenshot_path = res_path
 
         # Create pending ManualPayment record
         ManualPayment.objects.create(
@@ -200,6 +214,71 @@ def manual_checkout_view(request, plan_key):
         return redirect('courses:dashboard')
 
     return render(request, 'subscriptions/manual_checkout.html', base_context)
+
+
+@require_POST
+def payment_screenshot_upload_url_api(request):
+    """
+    Generates a Supabase Storage signed upload URL for payment screenshot direct upload.
+    Bypasses Vercel/Django completely for the image file transfer payload.
+    Protected: Authenticated users.
+    """
+    if not request.user or not request.user.is_authenticated:
+        return redirect(f"/accounts/signin/?next={request.path}")
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        data = request.POST
+
+    filename = data.get('filename', '').strip()
+    file_size = data.get('file_size')
+
+    if not filename:
+        return JsonResponse({'success': False, 'error': 'Filename is required.'}, status=400)
+
+    ext = os.path.splitext(filename)[1].lower()
+    allowed_exts = ['.jpg', '.jpeg', '.png', '.webp']
+    if ext not in allowed_exts:
+        return JsonResponse({
+            'success': False,
+            'error': f"Invalid image format '{ext}'. Allowed formats: JPG, PNG, WEBP."
+        }, status=400)
+
+    # Validate file size: max 2MB (2 * 1024 * 1024 bytes)
+    MAX_SCREENSHOT_SIZE = 2 * 1024 * 1024
+    if file_size is not None:
+        try:
+            size_int = int(file_size)
+            if size_int > MAX_SCREENSHOT_SIZE:
+                size_mb = round(size_int / (1024 * 1024), 2)
+                return JsonResponse({
+                    'success': False,
+                    'error': f"Screenshot size ({size_mb} MB) exceeds maximum allowed limit of 2 MB."
+                }, status=400)
+        except (ValueError, TypeError):
+            pass
+
+    # Target path: user_<id>_<timestamp>_<uuid>.<ext>
+    timestamp_str = int(timezone.now().timestamp())
+    unique_token = uuid.uuid4().hex[:8]
+    target_path = f"user_{request.user.id}_{timestamp_str}_{unique_token}{ext}"
+
+    _, _, bucket = get_supabase_storage_config()
+    success, signed_url, token = create_signed_upload_url(target_path, bucket=bucket, expires_in=1800)
+
+    if not success:
+        return JsonResponse({'success': False, 'error': signed_url}, status=500)
+
+    return JsonResponse({
+        'success': True,
+        'signed_url': signed_url,
+        'signed_upload_url': signed_url,
+        'token': token,
+        'screenshot_path': target_path,
+        'file_path': target_path,
+        'bucket': bucket,
+    })
 
 
 def is_admin_request(request):

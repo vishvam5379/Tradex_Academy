@@ -90,8 +90,10 @@ def admin_lecture_upload_url_api(request):
     return JsonResponse({
         'success': True,
         'signed_url': signed_url,
+        'signed_upload_url': signed_url,
         'token': token,
         'video_path': target_path,
+        'target_video_path': target_path,
         'bucket': get_lecture_bucket_name(),
     })
 
@@ -252,7 +254,7 @@ def admin_lecture_edit_view(request, lecture_id):
         course = request.POST.get('course', '').strip()
         position_raw = request.POST.get('position', '').strip()
         duration_raw = request.POST.get('duration_seconds', '').strip()
-        new_video = request.FILES.get('video_file')
+        new_video_path = request.POST.get('new_video_path', '').strip()
 
         errors = []
         if not title:
@@ -260,13 +262,18 @@ def admin_lecture_edit_view(request, lecture_id):
         if course not in ['indian_market', 'forex_gold']:
             errors.append("Valid course choice is required.")
 
-        if new_video:
-            ext = os.path.splitext(new_video.name)[1].lower()
+        # Reject legacy direct multipart file POSTs to avoid Vercel payload limit issues
+        if request.FILES.get('video_file'):
+            messages.warning(
+                request,
+                "Direct multipart video uploads are disabled. Please use the direct browser upload in the admin interface."
+            )
+            return redirect(f"/admin/lectures/?course={course if course in ['indian_market', 'forex_gold'] else 'all'}")
+
+        if new_video_path:
+            ext = os.path.splitext(new_video_path)[1].lower()
             if ext not in ALLOWED_EXTENSIONS:
                 errors.append(f"Invalid video format '{ext}'.")
-            if new_video.size > MAX_UPLOAD_SIZE_BYTES:
-                file_mb = round(new_video.size / (1024 * 1024), 1)
-                errors.append(f"New video ({file_mb} MB) exceeds maximum allowed limit of {MAX_UPLOAD_SIZE_MB} MB.")
 
         if errors:
             for err in errors:
@@ -282,7 +289,6 @@ def admin_lecture_edit_view(request, lecture_id):
                     lecture.duration_seconds = int(duration_raw)
 
                 # If new video path provided via direct upload, replace old in Supabase
-                new_video_path = request.POST.get('new_video_path', '').strip()
                 if new_video_path:
                     ext = os.path.splitext(new_video_path)[1].lower()
                     if ext in ALLOWED_EXTENSIONS:

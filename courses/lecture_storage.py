@@ -1,4 +1,5 @@
 import os
+import sys
 import re
 import requests
 from django.conf import settings
@@ -38,22 +39,29 @@ def get_lecture_bucket_name():
     return bucket
 
 
-def create_signed_upload_url(file_path, expires_in=7200):
+def create_signed_upload_url(file_path, bucket=None, expires_in=7200):
     """
     Generates a signed upload URL from Supabase Storage allowing direct browser PUT uploads.
     Bypasses Vercel/Django completely for the file transfer payload.
+    Supports any configured Supabase bucket (e.g. 'lecture-videos', 'payment-screenshots').
     Returns (success: bool, signed_url_or_error: str, token: str or None).
     """
     if not file_path:
         return False, "File path is required", None
 
-    supabase_url, supabase_key, bucket = get_supabase_lecture_storage_config()
+    supabase_url, supabase_key, default_bucket = get_supabase_lecture_storage_config()
+    target_bucket = bucket or default_bucket
 
     if not supabase_url or not supabase_key:
-        # Dev / fallback local mock upload URL
-        return True, f"/mock-upload/{bucket}/{file_path}", "mock_token"
+        # If in local debug mode or running unit tests, return mock URL for testing.
+        # In production (DEBUG=False and not testing), fail explicitly so the browser never attempts to PUT large payloads to Vercel!
+        is_test = 'test' in sys.argv or getattr(settings, 'TESTING', False)
+        is_debug = getattr(settings, 'DEBUG', False)
+        if is_debug or is_test:
+            return True, f"/mock-upload/{target_bucket}/{file_path}", "mock_token"
+        return False, "Supabase Storage credentials (SUPABASE_KEY or SUPABASE_SERVICE_ROLE_KEY) are not configured in environment variables.", None
 
-    sign_endpoint = f"{supabase_url}/storage/v1/object/upload/sign/{bucket}/{file_path}"
+    sign_endpoint = f"{supabase_url}/storage/v1/object/upload/sign/{target_bucket}/{file_path}"
     headers = {
         'Authorization': f"Bearer {supabase_key}",
         'apiKey': supabase_key,

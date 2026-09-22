@@ -515,8 +515,9 @@
       <button onclick="closeEditModal()" style="background: transparent; border: none; color: #94a3b8; font-size: 1.25rem; cursor: pointer;">✕</button>
     </div>
 
-    <form id="editForm" method="POST" enctype="multipart/form-data">
+    <form id="editForm" method="POST" onsubmit="handleEditFormSubmit(event)">
       {% csrf_token %}
+      <input type="hidden" name="new_video_path" id="edit_new_video_path" value="">
       <div class="form-group">
         <label for="edit_title">Lecture Title *</label>
         <input type="text" id="edit_title" name="title" class="form-input" required>
@@ -548,15 +549,31 @@
 
       <div class="form-group">
         <label>Replace Video File (optional)</label>
-        <input type="file" id="edit_video_file" name="video_file" accept=".mp4,.mov,.webm,.m4v" class="form-input">
+        <input type="file" id="edit_video_file" name="video_file" accept=".mp4,.mov,.webm,.m4v" class="form-input" onchange="handleEditFileSelected(this)">
         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-          Leave empty to keep existing video. If chosen, old file will be deleted from Supabase.
+          Leave empty to keep existing video. If selected, file uploads directly from browser to Supabase before saving.
         </div>
       </div>
 
+      <div id="editSizeWarning" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 10px 14px; font-size: 0.8125rem; color: #f87171; margin-bottom: 14px;">
+      </div>
+
+      <div id="editProgressContainer" style="display: none; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">
+          <span id="editStatusText">Uploading replacement video...</span>
+          <span id="editPercentText" style="font-weight: 700; color: var(--accent-primary);">0%</span>
+        </div>
+        <div style="background: rgba(255,255,255,0.08); border-radius: 6px; height: 8px; overflow: hidden;">
+          <div id="editProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #818cf8); transition: width 0.15s ease;"></div>
+        </div>
+        <div id="editBytesText" style="font-size: 0.7rem; color: var(--text-muted); text-align: right; margin-top: 4px;"></div>
+      </div>
+
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
-        <button type="button" onclick="closeEditModal()" class="btn btn-secondary btn-sm">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm" style="font-weight: 700;">Save Changes</button>
+        <button type="button" id="cancelEditBtn" onclick="closeEditModal()" class="btn btn-secondary btn-sm">Cancel</button>
+        <button type="submit" id="submitEditBtn" class="btn btn-primary btn-sm" style="font-weight: 700;">
+          <span id="submitEditBtnIcon">💾</span> <span id="submitEditBtnText">Save Changes</span>
+        </button>
       </div>
     </form>
   </div>
@@ -891,6 +908,28 @@
     }
   }
 
+  let activeEditUploadXhr = null;
+
+  function handleEditFileSelected(input) {
+    const warning = document.getElementById('editSizeWarning');
+    const submitBtn = document.getElementById('submitEditBtn');
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      if (file.size > MAX_BYTES) {
+        warning.style.display = 'block';
+        warning.innerHTML = `⚠️ Selected file is ${sizeMb} MB, which exceeds the ${ {{ stats.max_size_mb }} } MB limit.`;
+        if (submitBtn) submitBtn.disabled = true;
+      } else {
+        warning.style.display = 'none';
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    } else {
+      if (warning) warning.style.display = 'none';
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  }
+
   function openEditModal(id, title, desc, course, pos, duration) {
     document.getElementById('editForm').action = `/admin/lectures/${id}/edit/`;
     document.getElementById('edit_title').value = title;
@@ -898,10 +937,183 @@
     document.getElementById('edit_course').value = course;
     document.getElementById('edit_position').value = pos;
     document.getElementById('edit_duration_seconds').value = duration;
+
+    // Reset file and warning state
+    const fileInput = document.getElementById('edit_video_file');
+    const pathInput = document.getElementById('edit_new_video_path');
+    const warning = document.getElementById('editSizeWarning');
+    const progress = document.getElementById('editProgressContainer');
+    const submitBtn = document.getElementById('submitEditBtn');
+    const submitText = document.getElementById('submitEditBtnText');
+    const submitIcon = document.getElementById('submitEditBtnIcon');
+    const cancelBtn = document.getElementById('cancelEditBtn');
+
+    if (fileInput) fileInput.value = '';
+    if (pathInput) pathInput.value = '';
+    if (warning) warning.style.display = 'none';
+    if (progress) progress.style.display = 'none';
+    if (submitBtn) submitBtn.disabled = false;
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (submitIcon) submitIcon.innerText = '💾';
+    if (submitText) submitText.innerText = 'Save Changes';
+
     document.getElementById('editModal').classList.add('active');
   }
+
   function closeEditModal() {
+    if (activeEditUploadXhr) {
+      if (confirm("A replacement video upload is in progress. Cancel upload?")) {
+        activeEditUploadXhr.abort();
+        activeEditUploadXhr = null;
+      } else {
+        return;
+      }
+    }
     document.getElementById('editModal').classList.remove('active');
+  }
+
+  async function handleEditFormSubmit(e) {
+    const fileInput = document.getElementById('edit_video_file');
+    const titleInput = document.getElementById('edit_title');
+    const courseSelect = document.getElementById('edit_course');
+    const submitBtn = document.getElementById('submitEditBtn');
+    const submitText = document.getElementById('submitEditBtnText');
+    const submitIcon = document.getElementById('submitEditBtnIcon');
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    const warning = document.getElementById('editSizeWarning');
+    const progressContainer = document.getElementById('editProgressContainer');
+    const progressBar = document.getElementById('editProgressBar');
+    const percentText = document.getElementById('editPercentText');
+    const statusText = document.getElementById('editStatusText');
+    const bytesText = document.getElementById('editBytesText');
+    const form = document.getElementById('editForm');
+
+    // If no replacement file selected, submit standard metadata update directly (0 file bytes sent)
+    if (!fileInput.files || !fileInput.files[0]) {
+      return true;
+    }
+
+    // A replacement video was selected! Intercept form submission and upload to Supabase first
+    e.preventDefault();
+
+    const file = fileInput.files[0];
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    const allowed = ['.mp4', '.mov', '.webm', '.m4v'];
+    if (!allowed.includes(ext)) {
+      alert(`Invalid video format '${ext}'. Allowed: MP4, MOV, WEBM, M4V.`);
+      return;
+    }
+
+    if (file.size > MAX_BYTES) {
+      alert(`File size exceeds maximum allowed limit of ${ {{ stats.max_size_mb }} } MB.`);
+      return;
+    }
+
+    submitBtn.disabled = true;
+    cancelBtn.disabled = true;
+    submitIcon.innerText = '⏳';
+    submitText.innerText = 'Uploading Video...';
+    warning.style.display = 'none';
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    percentText.innerText = '0%';
+    statusText.innerText = '1/2: Requesting signed upload URL...';
+
+    const csrfToken = getCsrfToken();
+
+    try {
+      const urlRes = await fetch('/admin/lectures/upload-url/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          course: courseSelect.value.trim(),
+          title: titleInput.value.trim(),
+        })
+      });
+
+      if (!urlRes.ok) {
+        let errData = {};
+        try { errData = await urlRes.json(); } catch(_) {}
+        throw new Error(errData.error || `Server responded with HTTP ${urlRes.status} on URL generation.`);
+      }
+
+      const urlData = await urlRes.json();
+      if (!urlData.success || !urlData.signed_upload_url) {
+        throw new Error(urlData.error || 'Failed to obtain signed upload URL.');
+      }
+
+      const signedUploadUrl = urlData.signed_upload_url;
+      const targetVideoPath = urlData.target_video_path;
+
+      statusText.innerText = '2/2: Uploading directly to Supabase Storage...';
+
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        activeEditUploadXhr = xhr;
+
+        xhr.upload.onprogress = function(event) {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            progressBar.style.width = `${percent}%`;
+            percentText.innerText = `${percent}%`;
+            const uploadedMb = (event.loaded / (1024 * 1024)).toFixed(1);
+            const totalMb = (event.total / (1024 * 1024)).toFixed(1);
+            bytesText.innerText = `${uploadedMb} MB / ${totalMb} MB`;
+          }
+        };
+
+        xhr.onload = function() {
+          activeEditUploadXhr = null;
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            let detail = '';
+            try {
+              const parsed = JSON.parse(xhr.responseText);
+              detail = parsed.error || parsed.message || xhr.responseText;
+            } catch(_) {
+              detail = xhr.responseText || `HTTP ${xhr.status}`;
+            }
+            reject(new Error(`Supabase Storage returned HTTP ${xhr.status}: ${detail}`));
+          }
+        };
+
+        xhr.onerror = function() {
+          activeEditUploadXhr = null;
+          reject(new Error('Network error during direct upload to Supabase Storage.'));
+        };
+
+        xhr.onabort = function() {
+          activeEditUploadXhr = null;
+          reject(new Error('Upload was cancelled.'));
+        };
+
+        xhr.open('PUT', signedUploadUrl, true);
+        xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
+        xhr.send(file);
+      });
+
+      // Video uploaded directly to Supabase!
+      // Set new_video_path hidden input and clear file input value so 0 file bytes are sent to Django/Vercel
+      document.getElementById('edit_new_video_path').value = targetVideoPath;
+      fileInput.value = '';
+
+      statusText.innerText = 'Saving lecture details...';
+      form.submit();
+
+    } catch (err) {
+      console.error('Edit upload error:', err);
+      warning.style.display = 'block';
+      warning.innerHTML = `❌ <strong>Upload Failed:</strong> ${err.message}`;
+      submitBtn.disabled = false;
+      cancelBtn.disabled = false;
+      submitIcon.innerText = '💾';
+      submitText.innerText = 'Save Changes';
+    }
   }
 
   function openPreviewModal(title, signedUrl) {

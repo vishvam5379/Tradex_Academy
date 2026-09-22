@@ -612,4 +612,75 @@ class ManualUPITests(TestCase):
         notif2.refresh_from_db()
         self.assertTrue(notif2.is_read)
 
+    def test_payment_screenshot_upload_url_unauthenticated(self):
+        url = reverse('subscriptions:payment_screenshot_upload_url')
+        res = self.client.post(url, json.dumps({'filename': 'screen.png'}), content_type='application/json')
+        self.assertEqual(res.status_code, 302)
+        self.assertIn('/accounts/signin/', res.url)
+
+    def test_payment_screenshot_upload_url_authenticated_success(self):
+        self.client.login(email='student@test.com', password='Password123')
+        url = reverse('subscriptions:payment_screenshot_upload_url')
+        res = self.client.post(url, json.dumps({
+            'filename': 'my_payment.png',
+            'file_size': 1024 * 500,
+        }), content_type='application/json')
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data['success'])
+        self.assertIn('signed_upload_url', data)
+        self.assertIn('payment-screenshots', data['bucket'])
+        self.assertTrue(data['file_path'].endswith('.png'))
+
+    def test_payment_screenshot_upload_url_invalid_extension(self):
+        self.client.login(email='student@test.com', password='Password123')
+        url = reverse('subscriptions:payment_screenshot_upload_url')
+        res = self.client.post(url, json.dumps({
+            'filename': 'malicious.exe',
+            'file_size': 1024,
+        }), content_type='application/json')
+        self.assertEqual(res.status_code, 400)
+        data = res.json()
+        self.assertFalse(data['success'])
+        self.assertIn('Invalid image format', data['error'])
+
+    def test_payment_screenshot_upload_url_oversized(self):
+        self.client.login(email='student@test.com', password='Password123')
+        url = reverse('subscriptions:payment_screenshot_upload_url')
+        res = self.client.post(url, json.dumps({
+            'filename': 'large.jpg',
+            'file_size': 3 * 1024 * 1024,  # 3MB > 2MB limit
+        }), content_type='application/json')
+        self.assertEqual(res.status_code, 400)
+        data = res.json()
+        self.assertFalse(data['success'])
+        self.assertIn('exceeds maximum allowed limit of 2 MB', data['error'])
+
+    def test_manual_checkout_with_screenshot_path(self):
+        self.client.login(email='student@test.com', password='Password123')
+        url = reverse('subscriptions:manual_checkout', args=['starter'])
+        screenshot_path = f"payment-screenshots/{self.user.id}/valid_proof.png"
+        res = self.client.post(url, {
+            'utr': '123456789123',
+            'payer_upi_id': 'student@upi',
+            'screenshot_path': screenshot_path,
+        })
+        self.assertRedirects(res, reverse('courses:dashboard'))
+        payment = ManualPayment.objects.filter(user=self.user, utr='123456789123').first()
+        self.assertIsNotNone(payment)
+        self.assertEqual(payment.screenshot_path, screenshot_path)
+
+    def test_manual_checkout_with_invalid_screenshot_extension(self):
+        self.client.login(email='student@test.com', password='Password123')
+        url = reverse('subscriptions:manual_checkout', args=['starter'])
+        res = self.client.post(url, {
+            'utr': '998877665522',
+            'payer_upi_id': 'student@upi',
+            'screenshot_path': 'payment-screenshots/test/hack.exe',
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'Invalid screenshot file format')
+        self.assertEqual(ManualPayment.objects.filter(utr='998877665522').count(), 0)
+
+
 

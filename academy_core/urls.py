@@ -44,6 +44,8 @@ urlpatterns = [
     path('accounts/google/login/callback/', accounts_views.google_callback_view, name='google_callback_allauth'),
 
     path('accounts/', include('allauth.urls')),
+    path('pay/upload-url/', views_manual.payment_screenshot_upload_url_api, name='root_payment_upload_url'),
+    path('pay/upload-url', views_manual.payment_screenshot_upload_url_api),
     path('pay/<str:plan_key>/', views_manual.manual_checkout_view, name='root_pay_plan'),
     path('checkout/', subscriptions_views.checkout_view, name='root_checkout'),
     path('checkout/<str:plan_key>/', views_manual.manual_checkout_view, name='root_manual_checkout'),

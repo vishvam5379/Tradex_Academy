@@ -328,6 +328,52 @@ class LectureSystemTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Lecture.objects.filter(id=lec.id).exists())
 
+    @mock.patch('courses.views_admin.delete_lecture_file')
+    def test_admin_lecture_edit_direct_upload(self, mock_delete):
+        from courses.models import Lecture
+        self.client.login(email='admin@tradingacademy.com', password='AdminPassword123')
+        lec = Lecture.objects.create(
+            title='Old Title',
+            course='indian_market',
+            position=1,
+            video_path='lectures/indian_market/old_file.mp4'
+        )
+        response = self.client.post(f'/admin/lectures/{lec.id}/edit/', {
+            'title': 'New Updated Title',
+            'course': 'indian_market',
+            'position': '2',
+            'duration_seconds': '600',
+            'new_video_path': 'lectures/indian_market/new_replaced_file.mp4'
+        })
+        self.assertEqual(response.status_code, 302)
+        lec.refresh_from_db()
+        self.assertEqual(lec.title, 'New Updated Title')
+        self.assertEqual(lec.position, 2)
+        self.assertEqual(lec.video_path, 'lectures/indian_market/new_replaced_file.mp4')
+        mock_delete.assert_called_once_with('lectures/indian_market/old_file.mp4')
+
+    def test_admin_lecture_edit_rejects_raw_file(self):
+        from courses.models import Lecture
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.login(email='admin@tradingacademy.com', password='AdminPassword123')
+        lec = Lecture.objects.create(
+            title='Lesson Raw File Test',
+            course='indian_market',
+            position=1,
+            video_path='lectures/indian_market/original.mp4'
+        )
+        fake_video = SimpleUploadedFile("test.mp4", b"dummy video content", content_type="video/mp4")
+        response = self.client.post(f'/admin/lectures/{lec.id}/edit/', {
+            'title': 'Attempted Raw Upload',
+            'course': 'indian_market',
+            'video_file': fake_video
+        })
+        self.assertEqual(response.status_code, 302)
+        lec.refresh_from_db()
+        # Should not have changed title or video path because raw file was rejected
+        self.assertEqual(lec.title, 'Lesson Raw File Test')
+        self.assertEqual(lec.video_path, 'lectures/indian_market/original.mp4')
+
     def test_lecture_player_paywall_redirect(self):
         # Student user with no subscription is redirected to pay page
         self.client.login(email='student@example.com', password='StudentPassword123')

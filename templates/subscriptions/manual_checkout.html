@@ -177,8 +177,9 @@
           Once you complete the transfer, enter your 12-digit UPI reference (UTR) below so our team can approve your access.
         </p>
 
-        <form method="POST" enctype="multipart/form-data" action="/pay/{{ plan_code }}/" id="manualPaymentForm">
+        <form method="POST" action="/pay/{{ plan_code }}/" id="manualPaymentForm" onsubmit="handleManualPaymentSubmit(event)">
           {% csrf_token %}
+          <input type="hidden" name="screenshot_path" id="id_screenshot_path" value="">
 
           <!-- UTR Input (Required, 12 digits) -->
           <div class="form-group" style="margin-bottom: 18px;">
@@ -226,15 +227,27 @@
             </label>
             <input 
               type="file" 
-              name="screenshot" 
               id="id_screenshot" 
               class="form-control" 
               required
               accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+              onchange="handleScreenshotSelected(this)"
               style="width: 100%; padding: 8px; font-size: 0.8125rem;"
             >
+            <div id="screenshotWarning" style="display: none; padding: 8px 12px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; color: #f87171; font-size: 0.75rem; margin-top: 6px;"></div>
             <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">
-              Accepted formats: JPG, PNG, WEBP (Max 2 MB). Required for verification.
+              Accepted formats: JPG, PNG, WEBP (Max 2 MB). Uploaded directly to private storage.
+            </div>
+
+            <!-- Upload Progress Indicator -->
+            <div id="paymentUploadProgress" style="display: none; margin-top: 10px; padding: 10px 12px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 6px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; color: #38bdf8; margin-bottom: 4px;">
+                <span id="paymentUploadStatus">Uploading screenshot directly to Supabase...</span>
+                <span id="paymentUploadPercent">0%</span>
+              </div>
+              <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                <div id="paymentUploadBar" style="width: 0%; height: 100%; background: #38bdf8; transition: width 0.15s ease;"></div>
+              </div>
             </div>
           </div>
 
@@ -247,7 +260,7 @@
           </div>
 
           <button type="submit" class="btn btn-primary btn-block btn-lg" id="submitPaymentBtn" style="font-weight: 700;">
-            Submit for Verification &rarr;
+            <span id="submitPaymentBtnText">Submit for Verification &rarr;</span>
           </button>
         </form>
 
@@ -270,6 +283,168 @@
     }).catch(err => {
       console.error('Could not copy:', err);
     });
+  }
+
+  const MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024;
+
+  function handleScreenshotSelected(input) {
+    const warning = document.getElementById('screenshotWarning');
+    const submitBtn = document.getElementById('submitPaymentBtn');
+
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      if (file.size > MAX_SCREENSHOT_BYTES) {
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+        warning.style.display = 'block';
+        warning.innerHTML = `⚠️ Selected file is ${sizeMb} MB, which exceeds the 2 MB limit for payment screenshots. Please choose a compressed screenshot.`;
+        submitBtn.disabled = true;
+      } else {
+        warning.style.display = 'none';
+        submitBtn.disabled = false;
+      }
+    }
+  }
+
+  function getCsrfToken() {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, 10) === ('csrftoken=')) {
+          cookieValue = decodeURIComponent(cookie.substring(10));
+          break;
+        }
+      }
+    }
+    if (!cookieValue) {
+      const el = document.querySelector('[name=csrfmiddlewaretoken]');
+      if (el) cookieValue = el.value;
+    }
+    return cookieValue;
+  }
+
+  async function handleManualPaymentSubmit(e) {
+    e.preventDefault();
+
+    const form = document.getElementById('manualPaymentForm');
+    const utrInput = document.getElementById('id_utr');
+    const fileInput = document.getElementById('id_screenshot');
+    const hiddenPathInput = document.getElementById('id_screenshot_path');
+    const submitBtn = document.getElementById('submitPaymentBtn');
+    const submitBtnText = document.getElementById('submitPaymentBtnText');
+    const warning = document.getElementById('screenshotWarning');
+    const progressContainer = document.getElementById('paymentUploadProgress');
+    const progressBar = document.getElementById('paymentUploadBar');
+    const progressPercent = document.getElementById('paymentUploadPercent');
+    const progressStatus = document.getElementById('paymentUploadStatus');
+
+    const utr = utrInput.value.replace(/\s+/g, '');
+    if (!/^\d{12}$/.test(utr)) {
+      alert("Please enter a valid 12-digit UPI reference (UTR) number.");
+      utrInput.focus();
+      return;
+    }
+
+    // If already uploaded and path is set, submit directly
+    if (hiddenPathInput.value) {
+      form.submit();
+      return;
+    }
+
+    if (!fileInput.files || !fileInput.files[0]) {
+      alert("Please select your payment screenshot.");
+      return;
+    }
+
+    const file = fileInput.files[0];
+    if (file.size > MAX_SCREENSHOT_BYTES) {
+      alert(`Screenshot size (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the 2 MB limit.`);
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtnText.innerText = 'Uploading Screenshot...';
+    warning.style.display = 'none';
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressPercent.innerText = '0%';
+    progressStatus.innerText = '1/2: Authorizing direct screenshot upload...';
+
+    const csrfToken = getCsrfToken();
+
+    try {
+      // 1. Get signed upload URL (Payload: < 1 KB to Django)
+      const res = await fetch('/pay/upload-url/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          file_size: file.size,
+        })
+      });
+
+      if (!res.ok) {
+        let errData = {};
+        try { errData = await res.json(); } catch(_) {}
+        throw new Error(errData.error || `Server authorization failed (HTTP ${res.status}).`);
+      }
+
+      const data = await res.json();
+      if (!data.success || !data.signed_url) {
+        throw new Error(data.error || 'Failed to acquire signed upload URL for screenshot.');
+      }
+
+      const signedUrl = data.signed_url;
+      const screenshotPath = data.screenshot_path;
+
+      // 2. Direct upload to Supabase Storage via PUT (Zero bytes to Django/Vercel)
+      progressStatus.innerText = '2/2: Uploading directly to Supabase Storage...';
+
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = function(event) {
+          if (event.lengthComputable) {
+            const pct = Math.round((event.loaded / event.total) * 100);
+            progressBar.style.width = pct + '%';
+            progressPercent.innerText = pct + '%';
+          }
+        };
+        xhr.onload = function() {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`Supabase upload failed (HTTP ${xhr.status})`));
+          }
+        };
+        xhr.onerror = function() {
+          reject(new Error('Network error during screenshot upload to Supabase.'));
+        };
+        xhr.open('PUT', signedUrl, true);
+        xhr.setRequestHeader('Content-Type', file.type || 'image/jpeg');
+        xhr.send(file);
+      });
+
+      // 3. Set path in hidden input and clear file input so 0 file bytes are posted to Django
+      hiddenPathInput.value = screenshotPath;
+      fileInput.value = '';
+      progressStatus.innerText = '✅ Upload complete! Submitting verification...';
+      submitBtnText.innerText = 'Submitting...';
+
+      // 4. Submit form normally (text fields only, payload < 1 KB)
+      form.submit();
+
+    } catch (err) {
+      console.error('Screenshot upload error:', err);
+      warning.style.display = 'block';
+      warning.innerHTML = `❌ <strong>Upload Failed:</strong> ${err.message}`;
+      submitBtn.disabled = false;
+      submitBtnText.innerText = 'Submit for Verification \u2192';
+      progressContainer.style.display = 'none';
+    }
   }
 </script>
 {% endblock %}
