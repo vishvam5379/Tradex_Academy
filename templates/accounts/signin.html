@@ -22,7 +22,7 @@
     <!-- Sign In Card -->
     <div class="card" style="padding: 24px;">
       <!-- Google Sign In Button -->
-      <a href="{% url 'accounts:google_login' %}{% if next %}?next={{ next|urlencode }}{% endif %}{% if plan %}{% if next %}&{% else %}?{% endif %}plan={{ plan|urlencode }}{% endif %}" id="google-signin-btn" class="btn btn-secondary btn-block" style="display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 500; text-decoration: none; padding: 10px 16px; border: 1px solid var(--border-subtle); background-color: var(--bg-surface-raised, rgba(255,255,255,0.03)); color: var(--text-primary); transition: all 0.2s ease;">
+      <a href="{% url 'accounts:google_login' %}{% if next and next != 'None' %}?next={{ next|urlencode }}{% endif %}{% if plan %}{% if next and next != 'None' %}&{% else %}?{% endif %}plan={{ plan|urlencode }}{% endif %}" id="google-signin-btn" class="btn btn-secondary btn-block" style="display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 500; text-decoration: none; padding: 10px 16px; border: 1px solid var(--border-subtle); background-color: var(--bg-surface-raised, rgba(255,255,255,0.03)); color: var(--text-primary); transition: all 0.2s ease;">
         <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
           <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -41,7 +41,7 @@
 
       <form method="POST" action="{% url 'accounts:signin' %}">
         {% csrf_token %}
-        <input type="hidden" name="next" value="{{ next }}">
+        {% if next and next != 'None' %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
         {% if plan %}<input type="hidden" name="plan" value="{{ plan }}">{% endif %}
 
         <div class="form-group">

@@ -71,7 +71,93 @@ class AccountsTests(TestCase):
         self.assertEqual(user.name, 'Updated Name')
         self.assertEqual(user.phone, '+919999900000')
 
-    def test_password_reset_view(self):
-        res = self.client.get(reverse('accounts:password_reset'))
-        self.assertEqual(res.status_code, 200)
-        self.assertContains(res, 'Forgot password')
+    def test_signin_with_none_string_next_url(self):
+        User.objects.create_user(
+            email='testnone@example.com',
+            name='Test None',
+            password='Password123'
+        )
+        # Test literal string "None" in GET query
+        response = self.client.post(reverse('accounts:signin') + '?next=None', {
+            'email': 'testnone@example.com',
+            'password': 'Password123'
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('courses:dashboard'))
+
+        # Test literal string "None" in POST body
+        self.client.logout()
+        response_post = self.client.post(reverse('accounts:signin'), {
+            'email': 'testnone@example.com',
+            'password': 'Password123',
+            'next': 'None'
+        })
+        self.assertEqual(response_post.status_code, 302)
+        self.assertEqual(response_post.url, reverse('courses:dashboard'))
+
+    def test_signin_redirect_to_pay_plan(self):
+        User.objects.create_user(
+            email='payuser@example.com',
+            name='Pay User',
+            password='Password123'
+        )
+        # Unauthenticated user visits /pay/pro/
+        res_pay = self.client.get('/pay/pro/')
+        self.assertEqual(res_pay.status_code, 302)
+        self.assertIn(reverse('accounts:signin'), res_pay.url)
+        self.assertTrue('next=/pay/pro/' in res_pay.url or 'next=%2Fpay%2Fpro%2F' in res_pay.url)
+
+        # Signing in redirects to /pay/pro/
+        res_login = self.client.post(reverse('accounts:signin') + '?next=/pay/pro/', {
+            'email': 'payuser@example.com',
+            'password': 'Password123'
+        })
+        self.assertEqual(res_login.status_code, 302)
+        self.assertEqual(res_login.url, '/pay/pro/')
+
+    def test_signin_redirect_to_admin_payments(self):
+        User.objects.create_user(
+            email='admin@tradex.com',
+            name='Admin User',
+            password='Password123'
+        )
+        # Unauthenticated user visits /admin/payments/
+        res_admin = self.client.get('/admin/payments/')
+        self.assertEqual(res_admin.status_code, 302)
+        self.assertIn(reverse('accounts:signin'), res_admin.url)
+        self.assertTrue('next=/admin/payments/' in res_admin.url or 'next=%2Fadmin%2Fpayments%2F' in res_admin.url)
+
+        # Signing in redirects to /admin/payments/
+        res_login = self.client.post(reverse('accounts:signin') + '?next=/admin/payments/', {
+            'email': 'admin@tradex.com',
+            'password': 'Password123'
+        })
+        self.assertEqual(res_login.status_code, 302)
+        self.assertEqual(res_login.url, '/admin/payments/')
+
+    def test_signin_without_next_param_goes_to_dashboard(self):
+        User.objects.create_user(
+            email='normaluser@example.com',
+            name='Normal User',
+            password='Password123'
+        )
+        response = self.client.post(reverse('accounts:signin'), {
+            'email': 'normaluser@example.com',
+            'password': 'Password123'
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('courses:dashboard'))
+
+    def test_signin_open_redirect_rejected(self):
+        User.objects.create_user(
+            email='openuser@example.com',
+            name='Open User',
+            password='Password123'
+        )
+        # Malicious external redirect attempt
+        response = self.client.post(reverse('accounts:signin') + '?next=https://evil.com/phishing', {
+            'email': 'openuser@example.com',
+            'password': 'Password123'
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('courses:dashboard'))

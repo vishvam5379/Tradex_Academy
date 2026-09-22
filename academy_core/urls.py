@@ -10,6 +10,12 @@ from subscriptions import views_manual
 
 urlpatterns = [
     path('healthz/', health_check, name='health_check'),
+
+    # Manual UPI Admin Verification dashboard must be registered before django admin catch-all
+    path('admin/payments/', views_manual.admin_payments_view, name='root_admin_payments'),
+    path('admin/payments/<int:payment_id>/approve/', views_manual.admin_payment_approve_view, name='root_admin_payment_approve'),
+    path('admin/payments/<int:payment_id>/reject/', views_manual.admin_payment_reject_view, name='root_admin_payment_reject'),
+
     path('admin/', admin.site.urls),
 
     # Custom auth must be registered before allauth so /accounts/signup/, /login/,
@@ -26,9 +32,6 @@ urlpatterns = [
     path('checkout/', subscriptions_views.checkout_view, name='root_checkout'),
     path('checkout/<str:plan_key>/', views_manual.manual_checkout_view, name='root_manual_checkout'),
     path('subscriptions/', include('subscriptions.urls', namespace='subscriptions')),
-    path('admin/payments/', views_manual.admin_payments_view, name='root_admin_payments'),
-    path('admin/payments/<int:payment_id>/approve/', views_manual.admin_payment_approve_view, name='root_admin_payment_approve'),
-    path('admin/payments/<int:payment_id>/reject/', views_manual.admin_payment_reject_view, name='root_admin_payment_reject'),
     path('api/payments/webhook/', include('subscriptions.urls_webhook')),
     path('api/orders/<int:order_id>/status/', subscriptions_views.order_status_api, name='api_order_status_root'),
     path('', include('courses.urls', namespace='courses')),

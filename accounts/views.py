@@ -12,12 +12,35 @@ from django.views.decorators.http import require_http_methods
 from .forms import SignUpForm, SignInForm, UserProfileForm, CustomPasswordChangeForm
 
 
+def get_safe_redirect_url(request, next_url, default='courses:dashboard'):
+    """
+    Validates and sanitizes next_url:
+    - Rejects None, empty string, and literal string 'None' / 'null' / 'undefined'
+    - Ensures it is a safe local relative path (starts with '/' and not '//')
+    - Uses url_has_allowed_host_and_scheme to ensure no open redirect
+    - Falls back to default if invalid or unsafe
+    """
+    if not next_url:
+        return default
+    clean = str(next_url).strip()
+    if not clean or clean.lower() in ('none', 'null', 'undefined', 'false', '0'):
+        return default
+    # Must be a safe internal relative path (starts with single '/') or pass host check
+    if clean.startswith('/') and not clean.startswith('//'):
+        if url_has_allowed_host_and_scheme(url=clean, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+            return clean
+    return default
+
+
 def signup_view(request):
     if request.user.is_authenticated:
         return redirect('courses:dashboard')
 
-    next_url = request.GET.get('next') or request.POST.get('next')
+    raw_next = request.GET.get('next') or request.POST.get('next')
     plan = request.GET.get('plan') or request.POST.get('plan')
+
+    safe_next = get_safe_redirect_url(request, raw_next, default='')
+    next_url = safe_next if safe_next else None
 
     if request.method == 'POST':
         form = SignUpForm(request.POST)
@@ -28,7 +51,7 @@ def signup_view(request):
             
             if plan:
                 return redirect(f"/subscriptions/checkout/?plan={plan}")
-            if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+            if next_url:
                 return redirect(next_url)
             return redirect('courses:dashboard')
         else:
@@ -38,7 +61,7 @@ def signup_view(request):
 
     return render(request, 'accounts/signup.html', {
         'form': form,
-        'next': next_url,
+        'next': next_url or '',
         'plan': plan,
     })
 
@@ -47,8 +70,11 @@ def signin_view(request):
     if request.user.is_authenticated:
         return redirect('courses:dashboard')
 
-    next_url = request.GET.get('next') or request.POST.get('next')
+    raw_next = request.GET.get('next') or request.POST.get('next')
     plan = request.GET.get('plan') or request.POST.get('plan')
+
+    safe_next = get_safe_redirect_url(request, raw_next, default='')
+    next_url = safe_next if safe_next else None
 
     if request.method == 'POST':
         form = SignInForm(request.POST)
@@ -63,7 +89,7 @@ def signin_view(request):
                     messages.success(request, f"Welcome back, {user.name}!")
                     if plan:
                         return redirect(f"/subscriptions/checkout/?plan={plan}")
-                    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+                    if next_url:
                         return redirect(next_url)
                     return redirect('courses:dashboard')
                 else:
@@ -77,7 +103,7 @@ def signin_view(request):
 
     return render(request, 'accounts/signin.html', {
         'form': form,
-        'next': next_url,
+        'next': next_url or '',
         'plan': plan,
     })
 
@@ -144,9 +170,9 @@ def google_login_view(request):
     request.session['google_oauth_state'] = state
 
     # Capture 'next' and 'plan' parameters
-    next_url = request.GET.get('next')
-    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
-        request.session['google_oauth_next'] = next_url
+    safe_next = get_safe_redirect_url(request, request.GET.get('next'), default='')
+    if safe_next:
+        request.session['google_oauth_next'] = safe_next
 
     plan = request.GET.get('plan')
     if plan:
@@ -292,9 +318,10 @@ def google_callback_view(request):
         messages.success(request, f"Welcome back, {user.name}!")
 
     plan = request.session.pop('google_oauth_plan', None)
-    next_url = request.session.pop('google_oauth_next', None)
+    raw_next = request.session.pop('google_oauth_next', None)
     if plan:
         return redirect(f"/subscriptions/checkout/?plan={plan}")
-    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
-        return redirect(next_url)
+    safe_next = get_safe_redirect_url(request, raw_next, default='')
+    if safe_next:
+        return redirect(safe_next)
     return redirect('courses:dashboard')
