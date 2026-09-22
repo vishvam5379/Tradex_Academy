@@ -7,17 +7,26 @@ from academy_core.views import health_check
 from accounts import views as accounts_views
 from subscriptions import views as subscriptions_views
 from subscriptions import views_manual
+from courses import views_admin
+
+# Disable Django admin's greedy final catch-all regex so custom /admin/* routes are never swallowed
+admin.site.final_catch_all_view = False
 
 urlpatterns = [
     path('healthz/', health_check, name='health_check'),
 
-    # Manual UPI Admin Verification dashboard must be registered before django admin catch-all
+    # Manual UPI Admin Verification dashboard (supports trailing-slash and slashless requests)
     path('admin/payments/', views_manual.admin_payments_view, name='root_admin_payments'),
+    path('admin/payments', views_manual.admin_payments_view),
     path('admin/payments/<int:payment_id>/approve/', views_manual.admin_payment_approve_view, name='root_admin_payment_approve'),
     path('admin/payments/<int:payment_id>/reject/', views_manual.admin_payment_reject_view, name='root_admin_payment_reject'),
 
-    # Admin Lecture Management (Supabase Storage Videos)
-    path('admin/lectures/', include('courses.urls_admin')),
+    # Admin Lecture Management (Supabase Storage Videos) - direct paths before Django admin
+    path('admin/lectures/', views_admin.admin_lectures_view, name='admin_lectures'),
+    path('admin/lectures', views_admin.admin_lectures_view),
+    path('admin/lectures/<int:lecture_id>/edit/', views_admin.admin_lecture_edit_view, name='admin_lecture_edit'),
+    path('admin/lectures/<int:lecture_id>/delete/', views_admin.admin_lecture_delete_view, name='admin_lecture_delete'),
+    path('admin/lectures/<int:lecture_id>/signed-url/', views_admin.admin_lecture_signed_url_api, name='admin_lecture_signed_url'),
 
     path('admin/', admin.site.urls),
 

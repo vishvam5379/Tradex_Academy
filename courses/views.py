@@ -259,8 +259,12 @@ def dashboard_home(request):
     manual_payments = request.user.manual_payments.all().order_by('-created_at')
 
     # Real Admin-Managed Lectures from Supabase Storage
-    indian_market_lectures = list(Lecture.objects.filter(course='indian_market').order_by('position', 'id'))
-    forex_gold_lectures = list(Lecture.objects.filter(course='forex_gold').order_by('position', 'id'))
+    try:
+        indian_market_lectures = list(Lecture.objects.filter(course='indian_market').order_by('position', 'id'))
+        forex_gold_lectures = list(Lecture.objects.filter(course='forex_gold').order_by('position', 'id'))
+    except Exception:
+        indian_market_lectures = []
+        forex_gold_lectures = []
 
     active_plan_types = [s.plan_type.lower() for s in active_subscriptions] if active_subscriptions else []
     if active_sub and active_sub.plan_type:

@@ -123,7 +123,11 @@ def admin_lectures_view(request):
                 messages.error(request, f"An unexpected error occurred: {str(exc)}")
 
     # Fetch lectures
-    all_lectures = Lecture.objects.all().order_by('course', 'position', 'id')
+    try:
+        all_lectures = list(Lecture.objects.all().order_by('course', 'position', 'id'))
+    except Exception:
+        all_lectures = []
+
     indian_market_lectures = [l for l in all_lectures if l.course == 'indian_market']
     forex_gold_lectures = [l for l in all_lectures if l.course == 'forex_gold']
 
@@ -137,7 +141,7 @@ def admin_lectures_view(request):
     total_duration_str = f"{tot_hours}h {tot_mins}m" if tot_hours > 0 else f"{tot_mins} mins"
 
     stats = {
-        'total_count': all_lectures.count(),
+        'total_count': len(all_lectures),
         'indian_market_count': len(indian_market_lectures),
         'forex_gold_count': len(forex_gold_lectures),
         'total_duration_str': total_duration_str,
