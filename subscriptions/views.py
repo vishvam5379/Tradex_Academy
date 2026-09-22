@@ -22,71 +22,13 @@ from .utils import (
 @login_required
 def initiate_upi_payment(request, plan_key=None):
     """
-    Select Plan -> Payment Link (UPI only)
-    1. Requires login.
-    2. Reads plan key, looks up price on server, creates Order record with status 'created'.
-    3. Creates Razorpay UPI Payment Link (POST /v1/payment_links with upi_link: true).
-    4. Redirects to returned short_url.
-    Blocks duplicate active subscription for the same plan.
+    Select Plan -> Manual UPI Payment (/pay/<plan_key>/).
+    Directs user directly to manual UPI QR verification flow.
+    Razorpay payment link creation is completely disabled.
     """
     plan = plan_key or request.GET.get('plan', 'starter')
-    payment_mode = (getattr(settings, 'PAYMENT_MODE', None) or os.getenv('PAYMENT_MODE') or 'manual_upi').lower().strip()
-    if payment_mode == 'manual_upi':
-        from .views_manual import normalize_plan_key
-        return redirect('root_pay_plan', plan_key=normalize_plan_key(plan))
-
-    plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
-
-    normalized_key = plan.lower().strip()
-    if normalized_key in ['standard', 'starter']:
-        normalized_key = 'starter'
-    elif normalized_key in ['gold_strategy', 'pro']:
-        normalized_key = 'pro'
-    elif normalized_key in ['combo', 'elite']:
-        normalized_key = 'elite'
-    else:
-        normalized_key = 'starter'
-
-    plan_info = plans.get(normalized_key, plans.get('starter'))
-    price = plan_info['price']
-    plan_name = plan_info['name']
-
-    # Block duplicate active subscription for same plan
-    active_sub = getattr(request.user, 'active_subscription', None)
-    if active_sub and active_sub.is_currently_active:
-        sub_plan = active_sub.plan_type.lower()
-        if sub_plan == normalized_key or sub_plan in ['elite', 'combo']:
-            messages.info(request, f"You already have active access to {plan_name}.")
-            return redirect('courses:dashboard')
-
-    # Create Order record
-    order = Order.objects.create(
-        user=request.user,
-        plan=normalized_key,
-        amount=price,
-        currency='INR',
-        status='created'
-    )
-
-    callback_url = request.build_absolute_uri(f"/dashboard/?order={order.id}")
-
-    link = create_razorpay_payment_link(
-        amount_in_rupees=price,
-        reference_id=order.id,
-        user=request.user,
-        callback_url=callback_url,
-        plan_key=normalized_key,
-        plan_name=plan_name
-    )
-
-    order.gateway_order_id = link.get('id')
-    order.short_url = link.get('short_url')
-    order.save(update_fields=['gateway_order_id', 'short_url'])
-
-    if link.get('short_url'):
-        return redirect(link['short_url'])
-
-    return redirect(f"/dashboard/?order={order.id}")
+    from .views_manual import normalize_plan_key
+    return redirect('root_pay_plan', plan_key=normalize_plan_key(plan))
 
 
 @login_required
@@ -224,8 +166,8 @@ def razorpay_webhook_view(request):
 def checkout_view(request):
     """
     Checkout page supporting multi-tier plans with Order summary card.
-    In manual_upi mode (default), renders checkout.html where 'Pay ₹X via UPI' button links to /pay/<plan_key>/.
-    In razorpay mode, initializes Razorpay order.
+    The 'Pay ₹X via UPI' button links directly to /pay/<plan_key>/.
+    Razorpay orders are completely disabled.
     """
     plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
     
@@ -238,8 +180,6 @@ def checkout_view(request):
     selected_plan = plans[selected_plan_code]
     price = selected_plan['price']
     duration_days = selected_plan['duration_days']
-
-    payment_mode = (getattr(settings, 'PAYMENT_MODE', None) or os.getenv('PAYMENT_MODE') or 'manual_upi').lower().strip()
     
     already_active = request.user.has_active_subscription
     current_sub = request.user.active_subscription
@@ -250,29 +190,10 @@ def checkout_view(request):
         'selected_plan': selected_plan,
         'price': price,
         'duration_days': duration_days,
-        'payment_mode': payment_mode,
+        'payment_mode': 'manual_upi',
         'already_active': already_active,
         'current_sub': current_sub,
     }
-
-    if payment_mode != 'manual_upi':
-        order = create_razorpay_order(
-            amount_in_rupees=price,
-            currency='INR',
-            receipt=f"sub_{selected_plan_code}_{request.user.id}_{int(timezone.now().timestamp())}",
-            notes={
-                'user_id': str(request.user.id),
-                'user_email': request.user.email,
-                'plan_type': selected_plan_code,
-            }
-        )
-        context.update({
-            'razorpay_key_id': getattr(settings, 'RAZORPAY_KEY_ID', ''),
-            'razorpay_order_id': order['id'],
-            'amount_in_paise': order['amount'],
-            'currency': order['currency'],
-            'is_mock_order': order.get('is_mock', False),
-        })
 
     return render(request, 'subscriptions/checkout.html', context)
 
@@ -280,108 +201,16 @@ def checkout_view(request):
 @login_required
 @require_POST
 def create_order_api(request):
-    """API endpoint to generate fresh Razorpay order for a specific plan tier."""
-    try:
-        data = json.loads(request.body) if request.body else {}
-    except json.JSONDecodeError:
-        data = {}
-    
-    plan_code = data.get('plan', request.GET.get('plan', 'combo'))
-    plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
-    plan = plans.get(plan_code, plans.get('combo', {'price': 11999}))
-    price = plan['price']
-
-    order = create_razorpay_order(
-        amount_in_rupees=price,
-        currency='INR',
-        receipt=f"api_{plan_code}_{request.user.id}_{int(timezone.now().timestamp())}",
-        notes={'user_id': str(request.user.id), 'user_email': request.user.email, 'plan_type': plan_code}
-    )
-    order['plan_code'] = plan_code
-    order['plan_name'] = plan.get('name', 'Subscription')
-    order['price'] = price
-    return JsonResponse(order)
+    """API endpoint disabled. Manual UPI flow active via /pay/<plan_key>/."""
+    return JsonResponse({'error': 'Razorpay checkout is disabled. Use manual UPI payment flow at /pay/<plan_key>/.'}, status=400)
 
 
 @csrf_exempt
 @login_required
 @require_POST
 def verify_payment_view(request):
-    """
-    Verifies Razorpay payment signature and activates the selected subscription tier.
-    Accepts both JSON payloads and Form POST payloads.
-    """
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
-            return JsonResponse({'status': 'error', 'message': 'Invalid JSON format'}, status=400)
-    else:
-        data = request.POST
-
-    order_id = data.get('razorpay_order_id')
-    payment_id = data.get('razorpay_payment_id')
-    signature = data.get('razorpay_signature')
-    plan_code = data.get('plan_type', 'standard')
-
-    if not (order_id and payment_id):
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
-            return JsonResponse({'status': 'error', 'message': 'Missing payment credentials'}, status=400)
-        messages.error(request, "Incomplete payment data received.")
-        return redirect('subscriptions:failed')
-
-    is_valid = verify_razorpay_signature(order_id, payment_id, signature or '')
-
-    if is_valid:
-        now = timezone.now()
-        plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
-        plan_info = plans.get(plan_code, plans.get('combo', {
-            'name': 'Complete Trader',
-            'price': 11999,
-            'duration_days': 365
-        }))
-
-        duration_days = plan_info.get('duration_days', 365)
-        price = plan_info.get('price', 11999)
-        plan_name = f"{plan_info.get('name')} ({duration_days} Days)"
-
-        # Extend if already active, or start fresh from now
-        start_date = now
-        existing_sub = request.user.active_subscription
-        if existing_sub and existing_sub.end_date > now:
-            start_date = existing_sub.end_date
-            end_date = existing_sub.end_date + timedelta(days=duration_days)
-        else:
-            end_date = now + timedelta(days=duration_days)
-
-        subscription = Subscription.objects.create(
-            user=request.user,
-            plan_type=plan_code,
-            plan_name=plan_name,
-            amount_paid=price,
-            currency='INR',
-            start_date=start_date,
-            end_date=end_date,
-            status='ACTIVE',
-            razorpay_order_id=order_id,
-            razorpay_payment_id=payment_id,
-            razorpay_signature=signature or 'simulated_signature'
-        )
-
-        messages.success(request, f"🎉 Payment successful! Your {plan_info.get('name')} subscription is now active.")
-
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
-            return JsonResponse({
-                'status': 'success',
-                'redirect_url': f'/subscriptions/success/?sub_id={subscription.id}'
-            })
-        return redirect(f"/subscriptions/success/?sub_id={subscription.id}")
-    else:
-        messages.error(request, "Payment signature verification failed. Please contact support if your account was debited.")
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
-            return JsonResponse({'status': 'error', 'message': 'Signature verification failed'}, status=400)
-        return redirect('subscriptions:failed')
-
+    """API endpoint disabled. Manual UPI verification active via /admin/payments/."""
+    return JsonResponse({'error': 'Razorpay verification is disabled. Use manual UPI payment flow at /pay/<plan_key>/.'}, status=400)
 
 
 @login_required

@@ -44,12 +44,12 @@
           <div class="num" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
             Expires: {{ active_sub.end_date|date:"d M Y" }}
           </div>
-          <a href="{% url 'subscriptions:checkout' %}?plan={{ active_sub.plan_type }}" class="btn btn-secondary btn-sm">
+          <a href="/pay/{{ active_sub.plan_type }}/" class="btn btn-secondary btn-sm">
             Upgrade / Renew plan
           </a>
         </div>
         {% else %}
-        <a href="{% url 'subscriptions:checkout' %}" class="btn btn-primary btn-lg">
+        <a href="/pay/starter/" class="btn btn-primary btn-lg">
           Choose a plan to subscribe
         </a>
         {% endif %}

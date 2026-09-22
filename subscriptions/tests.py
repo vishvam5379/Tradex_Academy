@@ -49,35 +49,24 @@ class SubscriptionsTests(TestCase):
         self.assertFalse(self.user.has_active_subscription)
         self.assertEqual(self.user.subscription_days_remaining, 0)
 
-    @override_settings(PAYMENT_MODE='razorpay')
-    def test_initiate_upi_payment_creates_order_and_redirects(self):
+    def test_initiate_upi_payment_redirects_to_pay_plan(self):
         self.client.login(email='subscriber@test.com', password='Password123')
         response = self.client.get(reverse('subscriptions:initiate_upi_payment_plan', args=['starter']))
         
         self.assertEqual(response.status_code, 302)
-        order = Order.objects.filter(user=self.user, plan='starter').first()
-        self.assertIsNotNone(order)
-        self.assertEqual(order.amount, 3999.00)
-        self.assertEqual(order.currency, 'INR')
-        self.assertEqual(order.status, 'created')
+        self.assertEqual(response.url, '/pay/starter/')
+        # No Razorpay order should be created
+        self.assertEqual(Order.objects.filter(user=self.user, plan='starter').count(), 0)
 
-    @override_settings(PAYMENT_MODE='razorpay')
-    def test_initiate_upi_payment_blocks_duplicate_active_subscription(self):
+    def test_create_order_api_disabled(self):
         self.client.login(email='subscriber@test.com', password='Password123')
-        # Create active subscription for starter
-        Subscription.objects.create(
-            user=self.user,
-            plan_type='starter',
-            plan_name='Indian Market Foundation',
-            status='ACTIVE',
-            start_date=timezone.now(),
-            end_date=timezone.now() + timedelta(days=90),
-            amount_paid=3999.00
+        res = self.client.post(
+            reverse('subscriptions:create_order'),
+            data=json.dumps({'plan': 'pro'}),
+            content_type='application/json'
         )
-        response = self.client.get(reverse('subscriptions:initiate_upi_payment_plan', args=['starter']))
-        self.assertRedirects(response, reverse('courses:dashboard'))
-        # No new order should be created
-        self.assertEqual(Order.objects.filter(user=self.user).count(), 0)
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('Razorpay checkout is disabled', res.json().get('error', ''))
 
     def test_order_status_api(self):
         self.client.login(email='subscriber@test.com', password='Password123')

@@ -236,28 +236,22 @@
           <span class="num" style="color: var(--text-primary); font-size: 1.2rem;">₹{{ price }}.00</span>
         </div>
 
-        {% if payment_mode == 'manual_upi' %}
         <a href="/pay/{{ selected_plan_code }}/" class="btn btn-primary btn-block btn-lg" id="payNowBtn" style="margin-top: 16px; text-decoration: none; display: flex; align-items: center; justify-content: center; font-weight: 700; {% if selected_plan_code == 'gold_strategy' or selected_plan_code == 'pro' %}background-color: #eab308; border-color: #ca8a04; color: #000;{% endif %}">
           Pay ₹{{ price }} via UPI
         </a>
-        {% else %}
-        <button class="btn btn-primary btn-block btn-lg" id="payNowBtn" style="margin-top: 16px; {% if selected_plan_code == 'gold_strategy' %}background-color: #eab308; border-color: #ca8a04; color: #000;{% endif %}">
-          Pay ₹{{ price }} & Activate Plan
-        </button>
-        {% endif %}
 
         <div class="trust-badges">
           <div class="trust-badge-item">
             <i data-lucide="check" style="width: 13px; height: 13px; color: var(--accent-primary);"></i>
-            <span>{% if payment_mode == 'manual_upi' %}Access activated after payment verification{% else %}Instant server-side access activation{% endif %}</span>
+            <span>Access activated after payment verification</span>
           </div>
           <div class="trust-badge-item">
             <i data-lucide="shield" style="width: 13px; height: 13px; color: var(--text-muted);"></i>
-            <span>{% if payment_mode == 'manual_upi' %}Secure UPI payment{% else %}256-bit encrypted checkout via Razorpay{% endif %}</span>
+            <span>Secure UPI payment</span>
           </div>
           <div class="trust-badge-item">
             <i data-lucide="credit-card" style="width: 13px; height: 13px; color: var(--text-muted);"></i>
-            <span>{% if payment_mode == 'manual_upi' %}UPI payments only{% else %}Supports UPI, Cards, Netbanking, Wallets{% endif %}</span>
+            <span>UPI payments only</span>
           </div>
         </div>
       </div>
@@ -273,25 +267,6 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if payment_mode != 'manual_upi' %}
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-<script src="{% static 'js/checkout.js' %}"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    initRazorpayPayment({
-      keyId: "{{ razorpay_key_id }}",
-      orderId: "{{ razorpay_order_id }}",
-      amountInPaise: {{ amount_in_paise }},
-      currency: "{{ currency }}",
-      price: "{{ price }}",
-      planType: "{{ selected_plan_code }}",
-      planName: "{{ selected_plan.name }}",
-      userName: "{{ request.user.name|default:request.user.email }}",
-      userEmail: "{{ request.user.email }}",
-      userPhone: "{{ request.user.phone|default:'' }}"
-    });
-  });
-</script>
-{% endif %}
+<!-- Razorpay checkout completely disabled. Manual UPI flow active via /pay/<plan_key>/ -->
 {% endblock %}
 

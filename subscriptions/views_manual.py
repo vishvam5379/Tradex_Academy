@@ -178,7 +178,7 @@ def manual_checkout_view(request, plan_key):
 
         messages.success(
             request,
-            "Payment submitted. Your access will be activated after verification."
+            "Payment submitted — access will be activated after verification."
         )
         return redirect('courses:dashboard')
 

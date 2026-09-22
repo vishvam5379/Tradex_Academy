@@ -17,7 +17,7 @@
           Verifying your payment...
         </h3>
         <p id="verificationText" style="margin: 0; font-size: 0.875rem; color: #94a3b8;">
-          We are confirming your payment with Razorpay. Your courses will unlock automatically.
+          We are confirming your payment. Your courses will unlock automatically once verified.
         </p>
       </div>
       <span id="verificationBadge" class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.8rem; padding: 6px 12px;">
@@ -330,7 +330,7 @@
             </p>
           </div>
 
-          <a href="{% url 'subscriptions:checkout' %}?plan={{ item.obj.tier_required }}" class="btn btn-secondary btn-sm btn-block">
+          <a href="/pay/{{ item.obj.tier_required }}/" class="btn btn-secondary btn-sm btn-block">
             <span>Unlock Module &rarr;</span>
           </a>
         </div>
@@ -516,13 +516,13 @@
 
         <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
           {% if has_subscription %}
-          <a href="{% url 'subscriptions:checkout' %}?plan={{ active_sub.plan_type }}" class="btn btn-sm" style="font-size: 0.875rem; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.3); color: #ffffff !important; font-weight: 600; padding: 6px 14px; border-radius: 6px; text-decoration: none;">
+          <a href="/pay/{{ active_sub.plan_type }}/" class="btn btn-sm" style="font-size: 0.875rem; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.3); color: #ffffff !important; font-weight: 600; padding: 6px 14px; border-radius: 6px; text-decoration: none;">
             <span>Renew Plan</span>
           </a>
           {% endif %}
 
           {% if not user_has_combo_access %}
-          <a href="{% url 'subscriptions:checkout' %}?plan=combo" class="btn btn-primary btn-sm" style="font-size: 0.875rem; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; font-weight: 700; color: #ffffff;">
+          <a href="/pay/elite/" class="btn btn-primary btn-sm" style="font-size: 0.875rem; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; font-weight: 700; color: #ffffff;">
             <span>Upgrade to Complete Trader (₹11,999)</span>
           </a>
           {% else %}

@@ -133,7 +133,7 @@
       <div class="subscription-card-mini">
         <h5>Free tier</h5>
         <p>Unlock all Forex and Indian Market video lessons.</p>
-        <a href="{% url 'subscriptions:checkout' %}" class="btn btn-primary btn-sm btn-block" id="sidebarSubscribeBtn" style="font-size: 0.75rem;">
+        <a href="/pay/starter/" class="btn btn-primary btn-sm btn-block" id="sidebarSubscribeBtn" style="font-size: 0.75rem;">
           Subscribe &bull; ₹3,999
         </a>
       </div>
@@ -161,10 +161,10 @@
           {{ active_subscription.plan_name }} &mdash; {{ active_subscription.days_remaining }} days left
         </span>
         {% else %}
-        <a href="{% url 'subscriptions:checkout' %}" class="badge badge-gray num" style="text-decoration: none; color: var(--text-secondary);">
+        <a href="/pay/starter/" class="badge badge-gray num" style="text-decoration: none; color: var(--text-secondary);">
           Not subscribed
         </a>
-        <a href="{% url 'subscriptions:checkout' %}" class="btn btn-primary btn-sm">
+        <a href="/pay/starter/" class="btn btn-primary btn-sm">
           Subscribe (₹3,999)
         </a>
         {% endif %}

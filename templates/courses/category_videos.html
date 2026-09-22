@@ -53,7 +53,7 @@
     </div>
     {% endif %}
   </div>
-  <a href="{% url 'subscriptions:checkout' %}?plan={{ recommended_plan }}" class="btn btn-primary btn-lg" style="flex-shrink: 0;" id="subscribeToUnlockBtn">
+  <a href="/pay/{{ recommended_plan }}/" class="btn btn-primary btn-lg" style="flex-shrink: 0;" id="subscribeToUnlockBtn">
     {% if subcategory.tier_required == 'gold_strategy' %}
     Unlock Gold Mastery &bull; ₹9,999
     {% else %}
@@ -98,7 +98,7 @@
     </div>
     {% else %}
     <!-- Locked State Card (Clicking navigates to subscription plan page) -->
-    <a href="{% url 'subscriptions:checkout' %}?plan={{ recommended_plan }}" class="video-card locked" style="text-decoration: none; color: inherit; cursor: pointer;">
+    <a href="/pay/{{ recommended_plan }}/" class="video-card locked" style="text-decoration: none; color: inherit; cursor: pointer;">
       <div class="video-thumbnail-wrapper">
         <img src="{{ video.get_thumbnail_src }}" alt="{{ video.title }}" class="video-thumbnail-img" loading="lazy">
         <div class="video-duration-badge">{{ video.duration_formatted }}</div>

@@ -14,18 +14,17 @@ except ImportError:
 
 def get_upi_config():
     """Retrieve UPI payee configuration from environment or settings."""
-    upi_id = os.getenv('MANUAL_UPI_ID') or getattr(settings, 'MANUAL_UPI_ID', '9313858614@ibl')
-    payee_name = os.getenv('MANUAL_UPI_NAME') or getattr(settings, 'MANUAL_UPI_NAME', 'Tradex Academy')
-    upi_phone = os.getenv('MANUAL_UPI_PHONE') or getattr(settings, 'MANUAL_UPI_PHONE', '9313858614')
+    upi_id = os.getenv('MANUAL_UPI_ID') or getattr(settings, 'MANUAL_UPI_ID', '')
+    payee_name = os.getenv('MANUAL_UPI_NAME') or getattr(settings, 'MANUAL_UPI_NAME', '')
+    upi_phone = os.getenv('MANUAL_UPI_PHONE') or getattr(settings, 'MANUAL_UPI_PHONE', '')
     return upi_id.strip(), payee_name.strip(), upi_phone.strip()
 
 
-def generate_upi_deep_link(upi_id, payee_name, amount, plan_key, user_id):
+def generate_upi_deep_link(upi_id, payee_name, amount, plan_key, user_id=None):
     """
-    Format: upi://pay?pa=<UPI_ID>&pn=<PAYEE_NAME>&am=<amount>&cu=INR&tn=<short note>
+    Format: upi://pay?pa=<MANUAL_UPI_ID>&pn=<MANUAL_UPI_NAME>&am=<amount>&cu=INR&tn=TRADEX-<plan_key>
     """
-    clean_user = str(user_id)[:8]
-    note = f"TRADEX-{plan_key.upper()}-{clean_user}"
+    note = f"TRADEX-{plan_key}"
     params = {
         'pa': upi_id,
         'pn': payee_name,
