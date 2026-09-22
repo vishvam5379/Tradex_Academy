@@ -33,7 +33,7 @@ def initiate_upi_payment(request, plan_key=None):
     payment_mode = (getattr(settings, 'PAYMENT_MODE', None) or os.getenv('PAYMENT_MODE') or 'manual_upi').lower().strip()
     if payment_mode == 'manual_upi':
         from .views_manual import normalize_plan_key
-        return redirect('subscriptions:manual_checkout', plan_key=normalize_plan_key(plan))
+        return redirect('root_pay_plan', plan_key=normalize_plan_key(plan))
 
     plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
 
@@ -223,16 +223,58 @@ def razorpay_webhook_view(request):
 @login_required
 def checkout_view(request):
     """
-    Redirects checkout requests to UPI payment flow:
-    - 'manual_upi': goes to manual checkout page
-    - 'razorpay': goes to Razorpay UPI link flow
+    Checkout page supporting multi-tier plans with Order summary card.
+    In manual_upi mode (default), renders checkout.html where 'Pay ₹X via UPI' button links to /pay/<plan_key>/.
+    In razorpay mode, initializes Razorpay order.
     """
+    plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
+    
     plan = request.GET.get('plan', 'starter')
+    from .views_manual import normalize_plan_key
+    selected_plan_code = normalize_plan_key(plan)
+    if selected_plan_code not in plans:
+        selected_plan_code = 'starter'
+    
+    selected_plan = plans[selected_plan_code]
+    price = selected_plan['price']
+    duration_days = selected_plan['duration_days']
+
     payment_mode = (getattr(settings, 'PAYMENT_MODE', None) or os.getenv('PAYMENT_MODE') or 'manual_upi').lower().strip()
-    if payment_mode == 'manual_upi':
-        from .views_manual import normalize_plan_key
-        return redirect('subscriptions:manual_checkout', plan_key=normalize_plan_key(plan))
-    return redirect(f"/subscriptions/pay/?plan={plan}")
+    
+    already_active = request.user.has_active_subscription
+    current_sub = request.user.active_subscription
+
+    context = {
+        'plans': plans,
+        'selected_plan_code': selected_plan_code,
+        'selected_plan': selected_plan,
+        'price': price,
+        'duration_days': duration_days,
+        'payment_mode': payment_mode,
+        'already_active': already_active,
+        'current_sub': current_sub,
+    }
+
+    if payment_mode != 'manual_upi':
+        order = create_razorpay_order(
+            amount_in_rupees=price,
+            currency='INR',
+            receipt=f"sub_{selected_plan_code}_{request.user.id}_{int(timezone.now().timestamp())}",
+            notes={
+                'user_id': str(request.user.id),
+                'user_email': request.user.email,
+                'plan_type': selected_plan_code,
+            }
+        )
+        context.update({
+            'razorpay_key_id': getattr(settings, 'RAZORPAY_KEY_ID', ''),
+            'razorpay_order_id': order['id'],
+            'amount_in_paise': order['amount'],
+            'currency': order['currency'],
+            'is_mock_order': order.get('is_mock', False),
+        })
+
+    return render(request, 'subscriptions/checkout.html', context)
 
 
 @login_required

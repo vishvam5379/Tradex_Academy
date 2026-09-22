@@ -20,6 +20,7 @@ def subscription_context(request):
         'unread_notifications_count': 0,
         'pending_manual_payment': None,
         'approved_manual_payment': None,
+        'rejected_manual_payment': None,
     }
 
     if request.user.is_authenticated:
@@ -45,6 +46,8 @@ def subscription_context(request):
             context['pending_manual_payment'] = request.user.manual_payments.filter(status='pending').order_by('-created_at').first()
             # Most recent approved payment
             context['approved_manual_payment'] = request.user.manual_payments.filter(status='approved').order_by('-reviewed_at').first()
+            # Most recent rejected payment
+            context['rejected_manual_payment'] = request.user.manual_payments.filter(status='rejected').order_by('-reviewed_at').first()
 
         except Exception:
             pass

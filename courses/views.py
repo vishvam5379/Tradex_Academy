@@ -357,6 +357,9 @@ def video_player(request, category_slug, subcategory_slug, video_id):
 def mark_video_complete_api(request, video_id):
     """AJAX endpoint to toggle lesson completion status."""
     video = get_object_or_404(Video, id=video_id)
+    if not video.sub_category.is_accessible_by(request.user):
+        return JsonResponse({'status': 'error', 'message': 'Active subscription required.'}, status=403)
+
     progress, _ = WatchProgress.objects.get_or_create(user=request.user, video=video)
     progress.completed = not progress.completed
     progress.save()

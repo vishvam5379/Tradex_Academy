@@ -60,8 +60,8 @@
     </a>
     
     <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted);">
-      <i data-lucide="lock" style="width: 13px; height: 13px;"></i>
-      <span>256-bit encrypted checkout</span>
+      <i data-lucide="shield-check" style="width: 13px; height: 13px; color: var(--accent-primary);"></i>
+      <span>{% if payment_mode == 'manual_upi' %}Secure UPI payment{% else %}256-bit encrypted checkout{% endif %}</span>
     </div>
   </div>
 </header>
@@ -205,10 +205,15 @@
       </ul>
 
 
-      <!-- Dev/Test mode info note -->
+      <!-- Info note -->
       <div style="background-color: var(--bg-app); border: 1px solid var(--border-subtle); border-radius: var(--radius-xs); padding: 12px; margin-top: 20px; font-size: 0.75rem; color: var(--text-secondary);">
+        {% if payment_mode == 'manual_upi' %}
+        <div style="color: var(--text-primary); font-weight: 600; margin-bottom: 2px;">UPI Payment</div>
+        <span>Pay by UPI, submit your transaction ID and screenshot, and your plan is activated once we verify the payment.</span>
+        {% else %}
         <div style="color: var(--text-primary); font-weight: 600; margin-bottom: 2px;">Instant Gateway Activation</div>
         <span>Razorpay secure checkout supports UPI (GPay, PhonePe, Paytm, BHIM), Debit/Credit Cards, Netbanking, and Wallets.</span>
+        {% endif %}
       </div>
     </div>
 
@@ -231,22 +236,28 @@
           <span class="num" style="color: var(--text-primary); font-size: 1.2rem;">₹{{ price }}.00</span>
         </div>
 
+        {% if payment_mode == 'manual_upi' %}
+        <a href="/pay/{{ selected_plan_code }}/" class="btn btn-primary btn-block btn-lg" id="payNowBtn" style="margin-top: 16px; text-decoration: none; display: flex; align-items: center; justify-content: center; font-weight: 700; {% if selected_plan_code == 'gold_strategy' or selected_plan_code == 'pro' %}background-color: #eab308; border-color: #ca8a04; color: #000;{% endif %}">
+          Pay ₹{{ price }} via UPI
+        </a>
+        {% else %}
         <button class="btn btn-primary btn-block btn-lg" id="payNowBtn" style="margin-top: 16px; {% if selected_plan_code == 'gold_strategy' %}background-color: #eab308; border-color: #ca8a04; color: #000;{% endif %}">
           Pay ₹{{ price }} & Activate Plan
         </button>
+        {% endif %}
 
         <div class="trust-badges">
           <div class="trust-badge-item">
             <i data-lucide="check" style="width: 13px; height: 13px; color: var(--accent-primary);"></i>
-            <span>Instant server-side access activation</span>
+            <span>{% if payment_mode == 'manual_upi' %}Access activated after payment verification{% else %}Instant server-side access activation{% endif %}</span>
           </div>
           <div class="trust-badge-item">
             <i data-lucide="shield" style="width: 13px; height: 13px; color: var(--text-muted);"></i>
-            <span>256-bit encrypted checkout via Razorpay</span>
+            <span>{% if payment_mode == 'manual_upi' %}Secure UPI payment{% else %}256-bit encrypted checkout via Razorpay{% endif %}</span>
           </div>
           <div class="trust-badge-item">
             <i data-lucide="credit-card" style="width: 13px; height: 13px; color: var(--text-muted);"></i>
-            <span>Supports UPI, Cards, Netbanking, Wallets</span>
+            <span>{% if payment_mode == 'manual_upi' %}UPI payments only{% else %}Supports UPI, Cards, Netbanking, Wallets{% endif %}</span>
           </div>
         </div>
       </div>
@@ -262,6 +273,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if payment_mode != 'manual_upi' %}
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="{% static 'js/checkout.js' %}"></script>
 <script>
@@ -280,5 +292,6 @@
     });
   });
 </script>
+{% endif %}
 {% endblock %}
 

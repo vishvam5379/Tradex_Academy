@@ -22,8 +22,10 @@ urlpatterns = [
     path('accounts/google/login/callback/', accounts_views.google_callback_view, name='google_callback_allauth'),
 
     path('accounts/', include('allauth.urls')),
-    path('subscriptions/', include('subscriptions.urls', namespace='subscriptions')),
+    path('pay/<str:plan_key>/', views_manual.manual_checkout_view, name='root_pay_plan'),
+    path('checkout/', subscriptions_views.checkout_view, name='root_checkout'),
     path('checkout/<str:plan_key>/', views_manual.manual_checkout_view, name='root_manual_checkout'),
+    path('subscriptions/', include('subscriptions.urls', namespace='subscriptions')),
     path('admin/payments/', views_manual.admin_payments_view, name='root_admin_payments'),
     path('admin/payments/<int:payment_id>/approve/', views_manual.admin_payment_approve_view, name='root_admin_payment_approve'),
     path('admin/payments/<int:payment_id>/reject/', views_manual.admin_payment_reject_view, name='root_admin_payment_reject'),

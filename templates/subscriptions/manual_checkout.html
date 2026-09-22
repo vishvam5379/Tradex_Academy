@@ -88,13 +88,13 @@
 
       <!-- Quick Plan Switcher -->
       <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
-        <a href="{% url 'subscriptions:manual_checkout' 'starter' %}" class="btn btn-sm {% if plan_code == 'starter' %}btn-primary{% else %}btn-ghost{% endif %}" style="border-radius: 20px; font-size: 0.8125rem; text-decoration: none;">
+        <a href="/pay/starter/" class="btn btn-sm {% if plan_code == 'starter' %}btn-primary{% else %}btn-ghost{% endif %}" style="border-radius: 20px; font-size: 0.8125rem; text-decoration: none;">
           Indian Market (₹3,999)
         </a>
-        <a href="{% url 'subscriptions:manual_checkout' 'pro' %}" class="btn btn-sm {% if plan_code == 'pro' %}btn-primary{% else %}btn-ghost{% endif %}" style="border-radius: 20px; font-size: 0.8125rem; text-decoration: none;">
+        <a href="/pay/pro/" class="btn btn-sm {% if plan_code == 'pro' %}btn-primary{% else %}btn-ghost{% endif %}" style="border-radius: 20px; font-size: 0.8125rem; text-decoration: none;">
           Forex Gold (₹9,999)
         </a>
-        <a href="{% url 'subscriptions:manual_checkout' 'elite' %}" class="btn btn-sm {% if plan_code == 'elite' %}btn-primary{% else %}btn-ghost{% endif %}" style="border-radius: 20px; font-size: 0.8125rem; text-decoration: none; {% if plan_code == 'elite' %}background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: #ffffff; font-weight: 700;{% endif %}">
+        <a href="/pay/elite/" class="btn btn-sm {% if plan_code == 'elite' %}btn-primary{% else %}btn-ghost{% endif %}" style="border-radius: 20px; font-size: 0.8125rem; text-decoration: none; {% if plan_code == 'elite' %}background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: #ffffff; font-weight: 700;{% endif %}">
           ⭐ Complete Trader (₹11,999 &bull; All Videos)
         </a>
       </div>
@@ -177,7 +177,7 @@
           Once you complete the transfer, enter your 12-digit UPI reference (UTR) below so our team can approve your access.
         </p>
 
-        <form method="POST" enctype="multipart/form-data" action="{% url 'subscriptions:manual_checkout' plan_code %}" id="manualPaymentForm">
+        <form method="POST" enctype="multipart/form-data" action="/pay/{{ plan_code }}/" id="manualPaymentForm">
           {% csrf_token %}
 
           <!-- UTR Input (Required, 12 digits) -->
@@ -219,21 +219,22 @@
             >
           </div>
 
-          <!-- Screenshot Upload (Optional, JPG/PNG/WEBP <= 2MB) -->
+          <!-- Screenshot Upload (Required, JPG/PNG/WEBP <= 2MB) -->
           <div class="form-group" style="margin-bottom: 22px;">
             <label for="id_screenshot" style="display: block; font-size: 0.8125rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">
-              Payment Screenshot (Optional)
+              Payment Screenshot <span style="color: #ef4444;">*</span>
             </label>
             <input 
               type="file" 
               name="screenshot" 
               id="id_screenshot" 
               class="form-control" 
+              required
               accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
               style="width: 100%; padding: 8px; font-size: 0.8125rem;"
             >
             <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">
-              Accepted formats: JPG, PNG, WEBP (Max 2 MB). Speeds up verification.
+              Accepted formats: JPG, PNG, WEBP (Max 2 MB). Required for verification.
             </div>
           </div>
 

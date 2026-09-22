@@ -440,10 +440,109 @@ class ManualUPITests(TestCase):
         self.client.login(email='student@test.com', password='Password123')
         with self.settings(PAYMENT_MODE='manual_upi'):
             res = self.client.get(reverse('subscriptions:initiate_upi_payment_plan', args=['starter']))
-            self.assertRedirects(res, reverse('subscriptions:manual_checkout', args=['starter']))
+            self.assertRedirects(res, reverse('root_pay_plan', args=['starter']))
 
             res_checkout = self.client.get(reverse('subscriptions:checkout') + '?plan=starter')
-            self.assertRedirects(res_checkout, reverse('subscriptions:manual_checkout', args=['starter']))
+            self.assertEqual(res_checkout.status_code, 200)
+            self.assertContains(res_checkout, 'Pay ₹3999 via UPI')
+            self.assertContains(res_checkout, '/pay/starter/')
+            self.assertContains(res_checkout, 'Secure UPI payment')
+            self.assertContains(res_checkout, 'UPI payments only')
+            self.assertContains(res_checkout, 'Access activated after payment verification')
+            self.assertNotContains(res_checkout, 'checkout.razorpay.com')
+
+    def test_plan_specific_access_isolation(self):
+        cat_indian = Category.objects.create(name='Indian Market', slug='indian-market')
+        subcat_indian = SubCategory.objects.create(parent=cat_indian, name='IM Basics', slug='im-basics', tier_required='standard')
+        cat_forex = Category.objects.create(name='Forex', slug='forex')
+        subcat_forex = SubCategory.objects.create(parent=cat_forex, name='Forex Basics', slug='fx-basics', tier_required='gold_strategy')
+
+        # 1. Approving starter unlocks ONLY Indian Market, NOT Forex
+        payment_starter = ManualPayment.objects.create(
+            user=self.user,
+            plan_key='starter',
+            amount=3999.00,
+            status='pending',
+            utr='123456789012'
+        )
+        self.client.login(email='admin@tradex.com', password='Password123')
+        with self.settings(ADMIN_EMAILS='admin@tradex.com'):
+            self.client.post(reverse('subscriptions:admin_payment_approve', args=[payment_starter.id]))
+            self.assertTrue(subcat_indian.is_accessible_by(self.user))
+            self.assertFalse(subcat_forex.is_accessible_by(self.user))
+
+        # Reset user subscriptions
+        self.user.subscriptions.all().delete()
+
+        # 2. Approving pro unlocks ONLY Forex, NOT Indian Market
+        payment_pro = ManualPayment.objects.create(
+            user=self.user,
+            plan_key='pro',
+            amount=9999.00,
+            status='pending',
+            utr='123456789013'
+        )
+        with self.settings(ADMIN_EMAILS='admin@tradex.com'):
+            self.client.post(reverse('subscriptions:admin_payment_approve', args=[payment_pro.id]))
+            self.assertFalse(subcat_indian.is_accessible_by(self.user))
+            self.assertTrue(subcat_forex.is_accessible_by(self.user))
+
+        # Reset
+        self.user.subscriptions.all().delete()
+
+        # 3. Approving elite unlocks BOTH
+        payment_elite = ManualPayment.objects.create(
+            user=self.user,
+            plan_key='elite',
+            amount=11999.00,
+            status='pending',
+            utr='123456789014'
+        )
+        with self.settings(ADMIN_EMAILS='admin@tradex.com'):
+            self.client.post(reverse('subscriptions:admin_payment_approve', args=[payment_elite.id]))
+            self.assertTrue(subcat_indian.is_accessible_by(self.user))
+            self.assertTrue(subcat_forex.is_accessible_by(self.user))
+
+        # 4. Rejecting unlocks nothing
+        self.user.subscriptions.all().delete()
+        payment_rejected = ManualPayment.objects.create(
+            user=self.user,
+            plan_key='starter',
+            amount=3999.00,
+            status='pending',
+            utr='123456789015'
+        )
+        with self.settings(ADMIN_EMAILS='admin@tradex.com'):
+            self.client.post(reverse('subscriptions:admin_payment_reject', args=[payment_rejected.id]), {'reject_reason': 'Invalid UTR'})
+            self.assertFalse(subcat_indian.is_accessible_by(self.user))
+            self.assertFalse(subcat_forex.is_accessible_by(self.user))
+            self.assertEqual(self.user.subscriptions.filter(status='ACTIVE').count(), 0)
+
+    def test_dashboard_pending_and_rejected_cards(self):
+        self.client.login(email='student@test.com', password='Password123')
+        payment = ManualPayment.objects.create(
+            user=self.user,
+            plan_key='starter',
+            amount=3999.00,
+            status='pending',
+            utr='998877665511'
+        )
+        res = self.client.get(reverse('courses:dashboard'))
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'Payment under verification')
+        self.assertContains(res, '998877665511')
+
+        # Now test rejected state
+        payment.status = 'rejected'
+        payment.reject_reason = 'Invalid reference number'
+        payment.reviewed_at = timezone.now()
+        payment.save()
+
+        res_rej = self.client.get(reverse('courses:dashboard'))
+        self.assertEqual(res_rej.status_code, 200)
+        self.assertContains(res_rej, 'Payment Verification Rejected')
+        self.assertContains(res_rej, 'Invalid reference number')
+        self.assertContains(res_rej, 'Try again')
 
     def test_notification_read_api(self):
         notif = UserNotification.objects.create(
