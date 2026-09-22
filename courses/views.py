@@ -6,7 +6,8 @@ from django.contrib import messages
 from django.utils import timezone
 import json
 
-from .models import Category, SubCategory, Video, WatchProgress, CommunityChannel, CommunityMessage
+from .models import Category, SubCategory, Video, WatchProgress, CommunityChannel, CommunityMessage, Lecture
+from .lecture_storage import get_signed_lecture_url
 
 
 def user_has_combo_access(user):
@@ -257,6 +258,23 @@ def dashboard_home(request):
     pending_order_id = request.GET.get('order')
     manual_payments = request.user.manual_payments.all().order_by('-created_at')
 
+    # Real Admin-Managed Lectures from Supabase Storage
+    indian_market_lectures = list(Lecture.objects.filter(course='indian_market').order_by('position', 'id'))
+    forex_gold_lectures = list(Lecture.objects.filter(course='forex_gold').order_by('position', 'id'))
+
+    active_plan_types = [s.plan_type.lower() for s in active_subscriptions] if active_subscriptions else []
+    if active_sub and active_sub.plan_type:
+        active_plan_types.append(active_sub.plan_type.lower())
+
+    can_access_indian_market = bool(
+        request.user.is_staff or request.user.is_superuser or
+        any(p in ['standard', 'starter', 'combo', 'elite'] for p in active_plan_types)
+    )
+    can_access_forex_gold = bool(
+        request.user.is_staff or request.user.is_superuser or
+        any(p in ['gold_strategy', 'pro', 'combo', 'elite'] for p in active_plan_types)
+    )
+
     return render(request, 'courses/dashboard.html', {
         'subcategories_data': subcategories_data,
         'has_subscription': bool(active_sub and active_sub.end_date and active_sub.is_currently_active),
@@ -271,6 +289,10 @@ def dashboard_home(request):
         'has_combo_access': has_combo_access,
         'channels': channels,
         'community_messages': community_messages,
+        'indian_market_lectures': indian_market_lectures,
+        'forex_gold_lectures': forex_gold_lectures,
+        'can_access_indian_market': can_access_indian_market,
+        'can_access_forex_gold': can_access_forex_gold,
     })
 
 
@@ -507,4 +529,71 @@ def api_delete_community_message(request, message_id):
     
     msg.delete()
     return JsonResponse({'status': 'success', 'message_id': message_id})
+
+
+@login_required
+def lecture_player_view(request, lecture_id, course_slug=None):
+    """
+    Dedicated video player for real admin-managed lectures stored in Supabase.
+    Performs server-side active subscription verification:
+      - Starter / Standard -> Indian Market Mastery
+      - Pro / Gold Strategy -> Forex & Gold Mastery
+      - Elite / Combo -> All courses
+      - Staff / Superuser -> All courses
+    Generates a secure, short-lived signed URL for playback (never exposes permanent bucket URL).
+    """
+    lecture = get_object_or_404(Lecture, id=lecture_id)
+
+    if not lecture.is_accessible_by(request.user):
+        plan_code = 'pro' if lecture.course == 'forex_gold' else 'starter'
+        course_name = lecture.get_course_display()
+        messages.warning(
+            request,
+            f"Active subscription required to watch '{lecture.title}'. Upgrade to the {course_name} plan to unlock."
+        )
+        return redirect(f"/pay/{plan_code}/")
+
+    signed_url = get_signed_lecture_url(lecture.video_path, expires_in=3600)
+
+    # Playlist of lectures in the same course
+    course_lectures = list(Lecture.objects.filter(course=lecture.course).order_by('position', 'id'))
+    current_index = course_lectures.index(lecture) if lecture in course_lectures else -1
+    prev_lecture = course_lectures[current_index - 1] if current_index > 0 else None
+    next_lecture = course_lectures[current_index + 1] if 0 <= current_index < len(course_lectures) - 1 else None
+
+    return render(request, 'courses/lecture_player.html', {
+        'lecture': lecture,
+        'signed_url': signed_url,
+        'course_lectures': course_lectures,
+        'prev_lecture': prev_lecture,
+        'next_lecture': next_lecture,
+        'course_name': lecture.get_course_display(),
+        'current_index_human': current_index + 1 if current_index >= 0 else 1,
+        'total_lectures': len(course_lectures),
+    })
+
+
+@login_required
+def course_lectures_view(request, course_slug):
+    """
+    Displays the complete syllabus/curriculum of real lectures for a given course.
+    """
+    if course_slug not in ['indian_market', 'forex_gold']:
+        raise Http404("Course not found")
+
+    lectures = list(Lecture.objects.filter(course=course_slug).order_by('position', 'id'))
+    course_name = "Indian Market Mastery" if course_slug == 'indian_market' else "Forex & Gold Mastery"
+    recommended_plan = 'starter' if course_slug == 'indian_market' else 'pro'
+
+    dummy_lecture = Lecture(course=course_slug)
+    has_access = dummy_lecture.is_accessible_by(request.user)
+
+    return render(request, 'courses/course_lectures.html', {
+        'course_slug': course_slug,
+        'course_name': course_name,
+        'lectures': lectures,
+        'has_access': has_access,
+        'recommended_plan': recommended_plan,
+        'total_count': len(lectures),
+    })
 

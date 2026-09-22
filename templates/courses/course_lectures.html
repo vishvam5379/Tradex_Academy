@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ course_name }} Curriculum | Tradex Academy{% endblock %}
+
+{% block extra_css %}
+<style>
+  .course-wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 36px 20px 80px;
+  }
+  .course-header {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 32px;
+    margin-bottom: 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  .lecture-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    transition: all 0.2s;
+  }
+  .lecture-card:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .lecture-pos {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-family: monospace;
+    flex-shrink: 0;
+    color: #38bdf8;
+  }
+</style>
+{% endblock %}
+
+{% block body_content %}
+<div class="course-wrap">
+
+  <!-- Breadcrumbs -->
+  <div style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 20px;">
+    <a href="{% url 'courses:dashboard' %}" style="color: var(--text-muted); text-decoration: none;">🏠 Dashboard</a>
+    <span>&rsaquo;</span>
+    <span style="color: var(--text-primary); font-weight: 600;">{{ course_name }}</span>
+  </div>
+
+  <!-- Course Header Banner -->
+  <div class="course-header">
+    <div>
+      <div style="font-size: 0.75rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">
+        OFFICIAL ACADEMY CURRICULUM
+      </div>
+      <h1 style="font-size: 1.6rem; font-weight: 800; color: #ffffff; margin: 0;">
+        {{ course_name }}
+      </h1>
+      <p style="margin: 6px 0 0 0; font-size: 0.875rem; color: var(--text-muted);">
+        {{ total_count }} Lessons &bull; Admin-curated institutional trading strategy videos
+      </p>
+    </div>
+
+    <div>
+      {% if has_access %}
+        <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); font-size: 0.85rem; padding: 8px 16px; font-weight: 700;">
+          🟢 All Lessons Unlocked
+        </span>
+      {% else %}
+        <a href="/pay/{{ recommended_plan }}/" class="btn btn-primary btn-sm" style="font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+          <span>🔒 Unlock Full Course</span>
+          <span>&rarr;</span>
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Syllabus / Lectures List -->
+  <div style="margin-bottom: 24px;">
+    <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff; margin-bottom: 16px;">
+      Course Lessons &amp; Video Modules
+    </h3>
+
+    {% for l in lectures %}
+    <div class="lecture-card">
+      <div style="display: flex; align-items: center; gap: 16px; min-width: 0;">
+        <div class="lecture-pos">
+          #{{ l.position }}
+        </div>
+        <div>
+          <h4 style="margin: 0; font-size: 1rem; font-weight: 700; color: #ffffff;">
+            {{ l.title }}
+          </h4>
+          {% if l.description %}
+          <p style="margin: 4px 0 0 0; font-size: 0.8125rem; color: var(--text-muted); line-height: 1.4;">
+            {{ l.description|truncatewords:20 }}
+          </p>
+          {% endif %}
+          <div style="margin-top: 6px; font-size: 0.75rem; color: #94a3b8; font-family: monospace;">
+            ⏱ {{ l.duration_formatted }}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        {% if has_access %}
+        <a href="{% url 'courses:lecture_player' l.id %}" class="btn btn-primary btn-sm" style="font-weight: 700; white-space: nowrap;">
+          ▶ Watch Now
+        </a>
+        {% else %}
+        <a href="/pay/{{ recommended_plan }}/" class="btn btn-secondary btn-sm" style="white-space: nowrap; color: #facc15; border-color: rgba(250, 204, 21, 0.3);">
+          🔒 Unlock
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="card" style="padding: 40px; text-align: center; color: var(--text-muted); background: var(--bg-card); border: 1px dashed var(--border-subtle); border-radius: 10px;">
+      <div style="font-size: 2rem; margin-bottom: 8px;">📚</div>
+      <h4 style="color: #ffffff; margin: 0 0 6px 0;">Curriculum in progress</h4>
+      <p style="margin: 0; font-size: 0.85rem;">New lessons will appear here as soon as our administrators publish them.</p>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

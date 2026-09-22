@@ -16,6 +16,9 @@ urlpatterns = [
     path('admin/payments/<int:payment_id>/approve/', views_manual.admin_payment_approve_view, name='root_admin_payment_approve'),
     path('admin/payments/<int:payment_id>/reject/', views_manual.admin_payment_reject_view, name='root_admin_payment_reject'),
 
+    # Admin Lecture Management (Supabase Storage Videos)
+    path('admin/lectures/', include('courses.urls_admin')),
+
     path('admin/', admin.site.urls),
 
     # Custom auth must be registered before allauth so /accounts/signup/, /login/,

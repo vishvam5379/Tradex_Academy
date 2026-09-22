@@ -79,6 +79,71 @@ class SubCategory(models.Model):
 
 
 
+class Lecture(models.Model):
+    """
+    Real Admin-Managed Video Lecture tied directly to courses.
+    Video assets are stored privately in Supabase Storage.
+    Access is controlled strictly by active subscription plan:
+      - starter / standard -> 'indian_market'
+      - pro / gold_strategy -> 'forex_gold'
+      - elite / combo -> both 'indian_market' and 'forex_gold'
+      - staff / superuser -> all
+    """
+    COURSE_CHOICES = [
+        ('indian_market', 'Indian Market Mastery'),
+        ('forex_gold', 'Forex & Gold Mastery'),
+    ]
+
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    course = models.CharField(max_length=50, choices=COURSE_CHOICES, db_index=True)
+    position = models.PositiveIntegerField(default=1, help_text="Display order within the course")
+    video_path = models.CharField(max_length=500, help_text="Path in Supabase Storage private bucket")
+    duration_seconds = models.PositiveIntegerField(default=0, help_text="Duration in seconds")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'courses_lecture'
+        ordering = ['course', 'position', 'id']
+        verbose_name = 'Lecture'
+        verbose_name_plural = 'Lectures'
+
+    def __str__(self):
+        return f"[{self.get_course_display()}] #{self.position} - {self.title}"
+
+    @property
+    def duration_formatted(self):
+        """Returns MM:SS or HH:MM:SS format"""
+        if not self.duration_seconds:
+            return "00:00"
+        minutes, seconds = divmod(self.duration_seconds, 60)
+        hours, minutes = divmod(minutes, 60)
+        if hours > 0:
+            return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        return f"{minutes:02d}:{seconds:02d}"
+
+    def is_accessible_by(self, user):
+        """
+        Check if user has an active subscription granting access to this lecture's course.
+        """
+        if not user or not user.is_authenticated:
+            return False
+        if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
+            return True
+
+        active_subs = user.subscriptions.filter(status='ACTIVE', end_date__gt=timezone.now())
+        for sub in active_subs:
+            plan = (sub.plan_type or '').lower().strip()
+            if plan in ['combo', 'elite']:
+                return True
+            if self.course == 'indian_market' and plan in ['standard', 'starter']:
+                return True
+            if self.course == 'forex_gold' and plan in ['gold_strategy', 'pro']:
+                return True
+        return False
+
+
 class Video(models.Model):
     """Course Video Lesson"""
     sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name='videos')

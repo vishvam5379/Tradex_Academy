@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ lecture.title }} | {{ course_name }} | Tradex Academy{% endblock %}
+
+{% block extra_css %}
+<style>
+  .player-layout {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 28px;
+  }
+  @media (max-width: 1024px) {
+    .player-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+  .video-container {
+    position: relative;
+    background: #000000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    aspect-ratio: 16 / 9;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .video-container video {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+  }
+  .lecture-meta {
+    margin-top: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .playlist-sidebar {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: fit-content;
+    max-height: calc(100vh - 120px);
+    position: sticky;
+    top: 20px;
+  }
+  .playlist-header {
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .playlist-items {
+    overflow-y: auto;
+    max-height: 520px;
+  }
+  .playlist-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-subtle);
+    text-decoration: none;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+  }
+  .playlist-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+  }
+  .playlist-item.active {
+    background: rgba(56, 189, 248, 0.1);
+    border-left: 4px solid #38bdf8;
+    color: #ffffff;
+  }
+  .playlist-pos {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: monospace;
+    flex-shrink: 0;
+  }
+  .playlist-item.active .playlist-pos {
+    background: #38bdf8;
+    color: #0f172a;
+  }
+</style>
+{% endblock %}
+
+{% block body_content %}
+<div style="background: var(--bg-secondary); border-bottom: 1px solid var(--border-subtle); padding: 12px 20px;">
+  <div style="max-width: 1300px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; font-size: 0.8125rem; color: var(--text-muted); flex-wrap: wrap; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <a href="{% url 'courses:dashboard' %}" style="color: var(--text-muted); text-decoration: none;">🏠 Dashboard</a>
+      <span>&rsaquo;</span>
+      <a href="{% url 'courses:course_lectures' lecture.course %}" style="color: var(--text-muted); text-decoration: none;">{{ course_name }}</a>
+      <span>&rsaquo;</span>
+      <span style="color: var(--text-primary); font-weight: 600;">Lecture {{ current_index_human }} of {{ total_lectures }}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); font-size: 0.75rem; font-weight: 700;">
+        🔒 Verified Subscriber Access
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="player-layout">
+
+  <!-- Left: Main Video & Details -->
+  <div>
+    <!-- HTML5 Video Player Container with Signed Supabase URL -->
+    <div class="video-container">
+      {% if signed_url %}
+      <video id="lectureVideoPlayer" controls controlsList="nodownload" playsinline autoplay>
+        <source src="{{ signed_url }}" type="video/mp4">
+        Your browser does not support HTML5 video streaming.
+      </video>
+      {% else %}
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); padding: 20px; text-align: center;">
+        <div style="font-size: 2.5rem; margin-bottom: 12px;">⚠️</div>
+        <h3 style="color: #ffffff; margin: 0 0 6px 0;">Unable to load video stream</h3>
+        <p style="margin: 0; font-size: 0.85rem;">The video stream signature could not be generated. Please contact support or retry.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Video Metadata & Controls -->
+    <div class="lecture-meta">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            {% if lecture.course == 'indian_market' %}
+            <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.75rem;">
+              🇮🇳 Indian Market Mastery
+            </span>
+            {% else %}
+            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.75rem;">
+              🪙 Forex & Gold Mastery
+            </span>
+            {% endif %}
+            <span style="font-size: 0.8rem; color: var(--text-muted);">
+              Lecture #{{ lecture.position }} &bull; {{ lecture.duration_formatted }}
+            </span>
+          </div>
+          <h1 style="font-size: 1.4rem; font-weight: 800; color: #ffffff; margin: 0; line-height: 1.3;">
+            {{ lecture.title }}
+          </h1>
+        </div>
+
+        <!-- Next / Prev Controls -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          {% if prev_lecture %}
+          <a href="{% url 'courses:lecture_player' prev_lecture.id %}" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;">
+            <span>&larr; Prev</span>
+          </a>
+          {% endif %}
+
+          {% if next_lecture %}
+          <a href="{% url 'courses:lecture_player' next_lecture.id %}" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px; font-weight: 700;">
+            <span>Next &rarr;</span>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if lecture.description %}
+      <div style="font-size: 0.9rem; color: #cbd5e1; line-height: 1.6; border-top: 1px solid var(--border-subtle); padding-top: 16px;">
+        <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin: 0 0 8px 0;">
+          Lecture Overview & Notes
+        </h4>
+        {{ lecture.description|linebreaks }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Right: Course Playlist Sidebar -->
+  <div class="playlist-sidebar">
+    <div class="playlist-header">
+      <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent-primary); text-transform: uppercase; letter-spacing: 0.05em;">
+        COURSE PLAYLIST
+      </div>
+      <h3 style="font-size: 1.05rem; font-weight: 700; color: #ffffff; margin: 2px 0 0 0;">
+        {{ course_name }}
+      </h3>
+      <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+        {{ total_lectures }} Total Lectures &bull; Playing #{{ lecture.position }}
+      </div>
+    </div>
+
+    <div class="playlist-items">
+      {% for item in course_lectures %}
+      <a href="{% url 'courses:lecture_player' item.id %}" class="playlist-item {% if item.id == lecture.id %}active{% endif %}">
+        <div class="playlist-pos">
+          {% if item.id == lecture.id %}▶{% else %}{{ item.position }}{% endif %}
+        </div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-weight: 600; font-size: 0.85rem; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            {{ item.title }}
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+            {{ item.duration_formatted }}
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

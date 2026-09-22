@@ -1,5 +1,13 @@
 from django.contrib import admin
-from .models import Category, SubCategory, Video, WatchProgress
+from .models import Category, SubCategory, Video, WatchProgress, Lecture
+
+
+@admin.register(Lecture)
+class LectureAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'position', 'duration_formatted', 'created_at')
+    list_filter = ('course',)
+    search_fields = ('title', 'description', 'video_path')
+    ordering = ('course', 'position', 'id')
 
 
 class SubCategoryInline(admin.TabularInline):

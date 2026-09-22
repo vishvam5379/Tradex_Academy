@@ -78,6 +78,12 @@
           <span>🛡️ Admin Payments</span>
         </a>
       </div>
+      <div class="nav-item">
+        <a href="/admin/lectures/" class="nav-link {% if 'admin_lecture' in request.resolver_match.url_name %}active{% endif %}" style="color: #38bdf8;">
+          <i data-lucide="video" style="width: 15px; height: 15px; color: #38bdf8;"></i>
+          <span>🎬 Admin Lectures</span>
+        </a>
+      </div>
       {% endif %}
 
       <div class="nav-section-title" style="margin-top: 16px;">📈 Markets (Curriculum)</div>
