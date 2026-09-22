@@ -79,9 +79,13 @@ def admin_lecture_upload_url_api(request):
         except (ValueError, TypeError):
             pass
 
-    # Target path: lectures/<course>/<uuid>.<ext>
+    # Target path: lectures/<course>/<uuid>[_<slug>].<ext>
     clean_uuid = uuid.uuid4().hex
-    target_path = f"lectures/{course}/{clean_uuid}{ext}"
+    title_slug = slugify(title)[:40]
+    if title_slug:
+        target_path = f"lectures/{course}/{clean_uuid}_{title_slug}{ext}"
+    else:
+        target_path = f"lectures/{course}/{clean_uuid}{ext}"
 
     success, signed_url, token = create_signed_upload_url(target_path, expires_in=7200)
     if not success:

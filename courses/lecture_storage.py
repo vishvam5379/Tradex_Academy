@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import requests
+from urllib.parse import urlparse
 from django.conf import settings
 
 
@@ -9,8 +10,20 @@ def get_supabase_lecture_storage_config():
     """
     Extract Supabase URL, key, and the private lecture video bucket name from environment.
     Defaults bucket name to 'lecture-videos'.
+    Guarantees the URL is stripped of any path suffix (such as /rest/v1) and strictly points
+    to the Supabase project origin (https://<project-ref>.supabase.co).
     """
-    url = (os.getenv('SUPABASE_URL') or getattr(settings, 'SUPABASE_URL', '')).rstrip('/')
+    raw_url = os.getenv('SUPABASE_URL') or getattr(settings, 'SUPABASE_URL', '')
+    raw_url = str(raw_url).strip().strip('\'"')
+
+    url = ''
+    if raw_url:
+        parsed = urlparse(raw_url)
+        if parsed.scheme and parsed.netloc:
+            url = f"{parsed.scheme}://{parsed.netloc}"
+        else:
+            url = raw_url.split('/rest')[0].split('/storage')[0].rstrip('/')
+
     if not url:
         db_host = os.getenv('DB_HOST') or getattr(settings, 'DB_HOST', '')
         if 'supabase.co' in db_host:
@@ -23,12 +36,17 @@ def get_supabase_lecture_storage_config():
         os.getenv('SUPABASE_SERVICE_ROLE_KEY') or
         os.getenv('SUPABASE_KEY') or
         getattr(settings, 'SUPABASE_KEY', '')
-    ).strip()
+    ).strip().strip('\'"')
 
     bucket = (
         os.getenv('LECTURE_VIDEO_BUCKET') or
-        getattr(settings, 'LECTURE_VIDEO_BUCKET', 'lecture-videos')
-    ).strip()
+        os.getenv('SUPABASE_STORAGE_BUCKET') or
+        getattr(settings, 'LECTURE_VIDEO_BUCKET', '') or
+        getattr(settings, 'SUPABASE_STORAGE_BUCKET', 'lecture-videos')
+    ).strip().strip('\'"').strip('/')
+
+    if not bucket:
+        bucket = 'lecture-videos'
 
     return url, key, bucket
 
@@ -50,7 +68,8 @@ def create_signed_upload_url(file_path, bucket=None, expires_in=7200):
         return False, "File path is required", None
 
     supabase_url, supabase_key, default_bucket = get_supabase_lecture_storage_config()
-    target_bucket = bucket or default_bucket
+    target_bucket = (bucket or default_bucket).strip().strip('\'"').strip('/')
+    clean_path = str(file_path).strip().strip('\'"').lstrip('/')
 
     if not supabase_url or not supabase_key:
         # If in local debug mode or running unit tests, return mock URL for testing.
@@ -58,10 +77,10 @@ def create_signed_upload_url(file_path, bucket=None, expires_in=7200):
         is_test = 'test' in sys.argv or getattr(settings, 'TESTING', False)
         is_debug = getattr(settings, 'DEBUG', False)
         if is_debug or is_test:
-            return True, f"/mock-upload/{target_bucket}/{file_path}", "mock_token"
+            return True, f"/mock-upload/{target_bucket}/{clean_path}", "mock_token"
         return False, "Supabase Storage credentials (SUPABASE_KEY or SUPABASE_SERVICE_ROLE_KEY) are not configured in environment variables.", None
 
-    sign_endpoint = f"{supabase_url}/storage/v1/object/upload/sign/{target_bucket}/{file_path}"
+    sign_endpoint = f"{supabase_url}/storage/v1/object/upload/sign/{target_bucket}/{clean_path}"
     headers = {
         'Authorization': f"Bearer {supabase_key}",
         'apiKey': supabase_key,
@@ -108,7 +127,8 @@ def upload_lecture_file(uploaded_file, file_path, content_type=None):
         # Dev / fallback local mock path
         return True, f"local_mock/{file_path}"
 
-    target_url = f"{supabase_url}/storage/v1/object/{bucket}/{file_path}"
+    clean_path = str(file_path).strip().strip('\'"').lstrip('/')
+    target_url = f"{supabase_url}/storage/v1/object/{bucket}/{clean_path}"
     ct = content_type or getattr(uploaded_file, 'content_type', 'video/mp4') or 'video/mp4'
 
     headers = {
@@ -150,7 +170,8 @@ def get_signed_lecture_url(video_path, expires_in=3600):
     if not supabase_url or not supabase_key:
         return f"https://mock-storage.supabase.co/{bucket}/{video_path}?token=mock_signed_{expires_in}"
 
-    sign_endpoint = f"{supabase_url}/storage/v1/object/sign/{bucket}/{video_path}"
+    clean_path = str(video_path).strip().strip('\'"').lstrip('/')
+    sign_endpoint = f"{supabase_url}/storage/v1/object/sign/{bucket}/{clean_path}"
     headers = {
         'Authorization': f"Bearer {supabase_key}",
         'apiKey': supabase_key,
@@ -187,7 +208,8 @@ def delete_lecture_file(video_path):
     if not supabase_url or not supabase_key:
         return True, "No Supabase credentials configured; skipped remote deletion"
 
-    delete_url = f"{supabase_url}/storage/v1/object/{bucket}/{video_path}"
+    clean_path = str(video_path).strip().strip('\'"').lstrip('/')
+    delete_url = f"{supabase_url}/storage/v1/object/{bucket}/{clean_path}"
     headers = {
         'Authorization': f"Bearer {supabase_key}",
         'apiKey': supabase_key,

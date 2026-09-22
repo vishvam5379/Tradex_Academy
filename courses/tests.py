@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
+import os
 import json
 from unittest import mock
 
@@ -250,6 +251,21 @@ class LectureSystemTests(TestCase):
         self.assertIn('signed_url', data)
         self.assertTrue(data['video_path'].startswith('lectures/indian_market/'))
         self.assertTrue(data['video_path'].endswith('.mp4'))
+        self.assertIn('breakout-strategy', data['video_path'])
+
+    def test_supabase_url_normalization_strips_rest_v1(self):
+        from courses.lecture_storage import get_supabase_lecture_storage_config
+        with mock.patch.dict(os.environ, {'SUPABASE_URL': 'https://boqxnyjlqsyhnjkfddjk.supabase.co/rest/v1/'}):
+            url, _, _ = get_supabase_lecture_storage_config()
+            self.assertEqual(url, 'https://boqxnyjlqsyhnjkfddjk.supabase.co')
+
+        with mock.patch.dict(os.environ, {'SUPABASE_URL': 'https://boqxnyjlqsyhnjkfddjk.supabase.co/rest/v1'}):
+            url, _, _ = get_supabase_lecture_storage_config()
+            self.assertEqual(url, 'https://boqxnyjlqsyhnjkfddjk.supabase.co')
+
+        with mock.patch.dict(os.environ, {'SUPABASE_URL': "'https://boqxnyjlqsyhnjkfddjk.supabase.co/'"}):
+            url, _, _ = get_supabase_lecture_storage_config()
+            self.assertEqual(url, 'https://boqxnyjlqsyhnjkfddjk.supabase.co')
 
     def test_admin_lecture_upload_url_invalid_extension(self):
         self.client.login(email='admin@tradingacademy.com', password='AdminPassword123')

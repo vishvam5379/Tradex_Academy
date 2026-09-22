@@ -62,7 +62,18 @@ def generate_upi_qr_data_uri(upi_uri):
 
 def get_supabase_storage_config():
     """Extract Supabase URL, key, and bucket name from environment."""
-    url = (os.getenv('SUPABASE_URL') or getattr(settings, 'SUPABASE_URL', '')).rstrip('/')
+    raw_url = os.getenv('SUPABASE_URL') or getattr(settings, 'SUPABASE_URL', '')
+    raw_url = str(raw_url).strip().strip('\'"')
+
+    url = ''
+    if raw_url:
+        from urllib.parse import urlparse
+        parsed = urlparse(raw_url)
+        if parsed.scheme and parsed.netloc:
+            url = f"{parsed.scheme}://{parsed.netloc}"
+        else:
+            url = raw_url.split('/rest')[0].split('/storage')[0].rstrip('/')
+
     if not url:
         db_host = os.getenv('DB_HOST') or getattr(settings, 'DB_HOST', '')
         if 'supabase.co' in db_host:
@@ -75,12 +86,12 @@ def get_supabase_storage_config():
         os.getenv('SUPABASE_SERVICE_ROLE_KEY') or
         os.getenv('SUPABASE_KEY') or
         getattr(settings, 'SUPABASE_KEY', '')
-    ).strip()
+    ).strip().strip('\'"')
 
     bucket = (
         os.getenv('SUPABASE_STORAGE_BUCKET') or
         getattr(settings, 'SUPABASE_STORAGE_BUCKET', 'payment-screenshots')
-    ).strip()
+    ).strip().strip('\'"').strip('/')
 
     return url, key, bucket
 
@@ -96,7 +107,8 @@ def upload_screenshot_to_supabase(uploaded_file, file_path):
         # Dev / fallback local mock path
         return True, f"local_mock/{file_path}"
 
-    target_url = f"{supabase_url}/storage/v1/object/{bucket}/{file_path}"
+    clean_path = str(file_path).strip().strip('\'"').lstrip('/')
+    target_url = f"{supabase_url}/storage/v1/object/{bucket}/{clean_path}"
     headers = {
         'Authorization': f"Bearer {supabase_key}",
         'apiKey': supabase_key,
@@ -130,7 +142,8 @@ def get_signed_screenshot_url(screenshot_path, expires_in=300):
     if not supabase_url or not supabase_key:
         return None
 
-    sign_endpoint = f"{supabase_url}/storage/v1/object/sign/{bucket}/{screenshot_path}"
+    clean_path = str(screenshot_path).strip().strip('\'"').lstrip('/')
+    sign_endpoint = f"{supabase_url}/storage/v1/object/sign/{bucket}/{clean_path}"
     headers = {
         'Authorization': f"Bearer {supabase_key}",
         'apiKey': supabase_key,
