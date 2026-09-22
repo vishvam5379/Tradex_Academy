@@ -1,25 +1,26 @@
 import os
+import json
 import uuid
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST
-from django.http import Http404, JsonResponse
+from django.http import Http404, JsonResponse, HttpResponseBadRequest
 from django.contrib import messages
 from django.utils.text import slugify
 
 from subscriptions.views_manual import is_admin_email
 from .models import Lecture
 from .lecture_storage import (
+    create_signed_upload_url,
     upload_lecture_file,
     get_signed_lecture_url,
     delete_lecture_file,
     get_lecture_bucket_name,
 )
 
-# Maximum upload limit: 100 MB (104,857,600 bytes)
-# Rationale: Provides adequate capacity for 20-50 min compressed 1080p/720p trading lectures
-# while avoiding gateway timeouts and excessive memory buffering on server instances.
-MAX_UPLOAD_SIZE_BYTES = 100 * 1024 * 1024
-MAX_UPLOAD_SIZE_MB = 100
+# Maximum upload limit: 500 MB (524,288,000 bytes)
+# Direct browser-to-Supabase upload bypasses Vercel's 4.5MB serverless payload limit.
+MAX_UPLOAD_SIZE_MB = 500
+MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 ALLOWED_EXTENSIONS = {'.mp4', '.mov', '.webm', '.m4v'}
 
@@ -30,10 +31,150 @@ def is_admin_request(request):
     return is_admin_email(user)
 
 
+@require_POST
+def admin_lecture_upload_url_api(request):
+    """
+    Generates a Supabase Storage signed upload URL for direct browser-to-Supabase upload.
+    Bypasses Vercel entirely for the file transfer payload.
+    Protected: Admin only.
+    """
+    if not request.user or not request.user.is_authenticated:
+        return redirect(f"/accounts/signin/?next=/admin/lectures/")
+
+    if not is_admin_request(request):
+        raise Http404("Page not found")
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        data = request.POST
+
+    filename = data.get('filename', '').strip()
+    course = data.get('course', '').strip()
+    title = data.get('title', '').strip()
+    file_size = data.get('file_size')
+
+    if not filename:
+        return JsonResponse({'success': False, 'error': 'Filename is required.'}, status=400)
+
+    if course not in ['indian_market', 'forex_gold']:
+        return JsonResponse({'success': False, 'error': 'Please select a valid course.'}, status=400)
+
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return JsonResponse({
+            'success': False,
+            'error': f"Invalid video format '{ext}'. Allowed formats: MP4, MOV, WEBM, M4V."
+        }, status=400)
+
+    if file_size is not None:
+        try:
+            size_int = int(file_size)
+            if size_int > MAX_UPLOAD_SIZE_BYTES:
+                size_mb = round(size_int / (1024 * 1024), 1)
+                return JsonResponse({
+                    'success': False,
+                    'error': f"File size ({size_mb} MB) exceeds maximum allowed limit of {MAX_UPLOAD_SIZE_MB} MB."
+                }, status=400)
+        except (ValueError, TypeError):
+            pass
+
+    # Target path: lectures/<course>/<uuid>.<ext>
+    clean_uuid = uuid.uuid4().hex
+    target_path = f"lectures/{course}/{clean_uuid}{ext}"
+
+    success, signed_url, token = create_signed_upload_url(target_path, expires_in=7200)
+    if not success:
+        return JsonResponse({'success': False, 'error': signed_url}, status=500)
+
+    return JsonResponse({
+        'success': True,
+        'signed_url': signed_url,
+        'token': token,
+        'video_path': target_path,
+        'bucket': get_lecture_bucket_name(),
+    })
+
+
+@require_POST
+def admin_lecture_confirm_api(request):
+    """
+    Creates a Lecture database record after successful direct browser upload to Supabase.
+    Django receives only metadata and the pre-uploaded storage video_path.
+    Protected: Admin only.
+    """
+    if not request.user or not request.user.is_authenticated:
+        return redirect(f"/accounts/signin/?next=/admin/lectures/")
+
+    if not is_admin_request(request):
+        raise Http404("Page not found")
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        data = request.POST
+
+    title = data.get('title', '').strip()
+    description = data.get('description', '').strip()
+    course = data.get('course', '').strip()
+    position_raw = data.get('position')
+    duration_raw = data.get('duration_seconds')
+    video_path = data.get('video_path', '').strip()
+
+    if not title:
+        return JsonResponse({'success': False, 'error': 'Lecture title is required.'}, status=400)
+
+    if course not in ['indian_market', 'forex_gold']:
+        return JsonResponse({'success': False, 'error': 'Valid course choice is required.'}, status=400)
+
+    if not video_path:
+        return JsonResponse({'success': False, 'error': 'Video storage path is required.'}, status=400)
+
+    # Server-side extension re-validation
+    ext = os.path.splitext(video_path)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return JsonResponse({'success': False, 'error': f"Invalid video extension '{ext}'."}, status=400)
+
+    try:
+        if position_raw and str(position_raw).isdigit():
+            position = int(position_raw)
+        else:
+            max_pos = Lecture.objects.filter(course=course).count()
+            position = max_pos + 1
+
+        duration_seconds = int(duration_raw) if (duration_raw and str(duration_raw).isdigit()) else 0
+
+        lecture = Lecture.objects.create(
+            title=title,
+            description=description,
+            course=course,
+            position=position,
+            video_path=video_path,
+            duration_seconds=duration_seconds,
+        )
+
+        messages.success(
+            request,
+            f"Lecture '{lecture.title}' uploaded successfully! Registered in database and stored in '{get_lecture_bucket_name()}'."
+        )
+
+        return JsonResponse({
+            'success': True,
+            'lecture_id': lecture.id,
+            'title': lecture.title,
+            'course': lecture.course,
+            'video_path': lecture.video_path,
+            'redirect_url': f"/admin/lectures/?course={course}",
+        })
+    except Exception as exc:
+        return JsonResponse({'success': False, 'error': f"Failed to register lecture: {str(exc)}"}, status=500)
+
+
 def admin_lectures_view(request):
     """
     Main Admin Dashboard for managing course lectures.
     Protected: Only authenticated administrators can access. Returns 404 for non-admins.
+    Uploads are handled asynchronously via direct-to-Supabase endpoints (upload-url and confirm).
     """
     if not request.user or not request.user.is_authenticated:
         return redirect(f"/accounts/signin/?next={request.path}")
@@ -46,81 +187,13 @@ def admin_lectures_view(request):
     if course_filter not in valid_courses:
         course_filter = 'all'
 
+    # Reject legacy direct multipart file POSTs to avoid any Vercel payload limit issues
     if request.method == 'POST':
-        # Handle new lecture upload
-        title = request.POST.get('title', '').strip()
-        description = request.POST.get('description', '').strip()
-        course = request.POST.get('course', '').strip()
-        position_raw = request.POST.get('position', '').strip()
-        duration_raw = request.POST.get('duration_seconds', '').strip()
-        video_file = request.FILES.get('video_file')
-
-        errors = []
-
-        if not title:
-            errors.append("Lecture title is required.")
-        if course not in ['indian_market', 'forex_gold']:
-            errors.append("Please select a valid course (Indian Market Mastery or Forex & Gold Mastery).")
-        if not video_file:
-            errors.append("A video file (MP4, MOV, or WEBM) is required.")
-        else:
-            ext = os.path.splitext(video_file.name)[1].lower()
-            if ext not in ALLOWED_EXTENSIONS:
-                errors.append(f"Invalid video format '{ext}'. Allowed formats: MP4, MOV, WEBM, M4V.")
-            if video_file.size > MAX_UPLOAD_SIZE_BYTES:
-                file_mb = round(video_file.size / (1024 * 1024), 1)
-                errors.append(
-                    f"File size ({file_mb} MB) exceeds maximum allowed limit of {MAX_UPLOAD_SIZE_MB} MB. "
-                    "Please compress the video or export at 1080p/720p before uploading."
-                )
-
-        if errors:
-            for err in errors:
-                messages.error(request, err)
-        else:
-            try:
-                # Compute position
-                if position_raw and position_raw.isdigit():
-                    position = int(position_raw)
-                else:
-                    max_pos = Lecture.objects.filter(course=course).count()
-                    position = max_pos + 1
-
-                # Compute duration
-                duration_seconds = int(duration_raw) if (duration_raw and duration_raw.isdigit()) else 0
-
-                # Generate clean unique storage path
-                clean_title_slug = slugify(title)[:35] or 'lecture'
-                ext = os.path.splitext(video_file.name)[1].lower() or '.mp4'
-                unique_token = uuid.uuid4().hex[:8]
-                storage_path = f"{course}/{position:02d}_{clean_title_slug}_{unique_token}{ext}"
-
-                # Upload to Supabase Storage bucket
-                success, path_or_err = upload_lecture_file(
-                    video_file,
-                    storage_path,
-                    content_type=video_file.content_type
-                )
-
-                if not success:
-                    messages.error(request, f"Upload to cloud storage failed: {path_or_err}")
-                else:
-                    lecture = Lecture.objects.create(
-                        title=title,
-                        description=description,
-                        course=course,
-                        position=position,
-                        video_path=path_or_err,
-                        duration_seconds=duration_seconds,
-                    )
-                    messages.success(
-                        request,
-                        f"Lecture '{lecture.title}' uploaded successfully! Saved to private bucket '{get_lecture_bucket_name()}'."
-                    )
-                    return redirect(f"/admin/lectures/?course={course}")
-
-            except Exception as exc:
-                messages.error(request, f"An unexpected error occurred: {str(exc)}")
+        messages.warning(
+            request,
+            "Direct form POSTs are disabled. Video files must be uploaded via the direct browser-to-Supabase flow."
+        )
+        return redirect(f"/admin/lectures/?course={course_filter}")
 
     # Fetch lectures
     try:
@@ -208,27 +281,15 @@ def admin_lecture_edit_view(request, lecture_id):
                 if duration_raw and duration_raw.isdigit():
                     lecture.duration_seconds = int(duration_raw)
 
-                # If new video file uploaded, replace old in Supabase
-                if new_video:
-                    clean_title_slug = slugify(title)[:35] or 'lecture'
-                    ext = os.path.splitext(new_video.name)[1].lower() or '.mp4'
-                    unique_token = uuid.uuid4().hex[:8]
-                    new_storage_path = f"{course}/{lecture.position:02d}_{clean_title_slug}_{unique_token}{ext}"
-
-                    # Delete previous file if exists
-                    old_path = lecture.video_path
-                    delete_lecture_file(old_path)
-
-                    # Upload replacement
-                    success, res_path = upload_lecture_file(
-                        new_video,
-                        new_storage_path,
-                        content_type=new_video.content_type
-                    )
-                    if not success:
-                        messages.error(request, f"Failed to upload replacement video: {res_path}")
-                        return redirect(f"/admin/lectures/?course={course}")
-                    lecture.video_path = res_path
+                # If new video path provided via direct upload, replace old in Supabase
+                new_video_path = request.POST.get('new_video_path', '').strip()
+                if new_video_path:
+                    ext = os.path.splitext(new_video_path)[1].lower()
+                    if ext in ALLOWED_EXTENSIONS:
+                        old_path = lecture.video_path
+                        if old_path and old_path != new_video_path:
+                            delete_lecture_file(old_path)
+                        lecture.video_path = new_video_path
 
                 lecture.save()
                 messages.success(request, f"Lecture '{lecture.title}' updated successfully.")

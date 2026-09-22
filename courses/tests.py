@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
+import json
 from unittest import mock
 
 from courses.models import Category, SubCategory, Video
@@ -215,25 +216,104 @@ class LectureSystemTests(TestCase):
         self.assertContains(response, 'Nifty Breakout Structure')
         self.assertContains(response, 'XAUUSD London Session Sweep')
 
-    @mock.patch('courses.views_admin.MAX_UPLOAD_SIZE_BYTES', 50)
-    def test_admin_lecture_upload_size_limit(self):
-        from django.core.files.uploadedfile import SimpleUploadedFile
-        self.client.login(email='admin@tradingacademy.com', password='AdminPassword123')
-
-        # 200 bytes exceeds patched limit of 50 bytes
-        oversized_data = b'0' * 200
-        big_file = SimpleUploadedFile("big_video.mp4", oversized_data, content_type="video/mp4")
-
-        response = self.client.post('/admin/lectures/', {
-            'title': 'Oversized Lesson',
+    def test_admin_lecture_upload_url_security_unauthenticated(self):
+        response = self.client.post('/admin/lectures/upload-url/', json.dumps({
+            'filename': 'lesson1.mp4',
             'course': 'indian_market',
-            'position': 2,
-            'video_file': big_file,
-        })
+            'title': 'Test Lesson',
+            'file_size': 1000
+        }), content_type='application/json')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/signin/', response.url)
+
+    def test_admin_lecture_upload_url_security_non_admin(self):
+        self.client.login(email='student@example.com', password='StudentPassword123')
+        response = self.client.post('/admin/lectures/upload-url/', json.dumps({
+            'filename': 'lesson1.mp4',
+            'course': 'indian_market',
+            'title': 'Test Lesson',
+            'file_size': 1000
+        }), content_type='application/json')
+        self.assertEqual(response.status_code, 404)
+
+    def test_admin_lecture_upload_url_success(self):
+        self.client.login(email='admin@tradingacademy.com', password='AdminPassword123')
+        response = self.client.post('/admin/lectures/upload-url/', json.dumps({
+            'filename': 'breakout_strategy.mp4',
+            'course': 'indian_market',
+            'title': 'Breakout Strategy',
+            'file_size': 1024 * 1024 * 42  # 42 MB
+        }), content_type='application/json')
         self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertIn('signed_url', data)
+        self.assertTrue(data['video_path'].startswith('lectures/indian_market/'))
+        self.assertTrue(data['video_path'].endswith('.mp4'))
+
+    def test_admin_lecture_upload_url_invalid_extension(self):
+        self.client.login(email='admin@tradingacademy.com', password='AdminPassword123')
+        response = self.client.post('/admin/lectures/upload-url/', json.dumps({
+            'filename': 'malicious_script.exe',
+            'course': 'indian_market',
+            'title': 'Bad File',
+        }), content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data['success'])
+        self.assertIn('Invalid video format', data['error'])
+
+    @mock.patch('courses.views_admin.MAX_UPLOAD_SIZE_BYTES', 50)
+    def test_admin_lecture_upload_url_size_limit(self):
+        self.client.login(email='admin@tradingacademy.com', password='AdminPassword123')
+        response = self.client.post('/admin/lectures/upload-url/', json.dumps({
+            'filename': 'oversized.mp4',
+            'course': 'indian_market',
+            'title': 'Oversized Lesson',
+            'file_size': 200  # Exceeds 50 bytes patched limit
+        }), content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data['success'])
+        self.assertIn('exceeds maximum allowed limit', data['error'])
+
+    def test_admin_lecture_confirm_security_unauthenticated(self):
+        response = self.client.post('/admin/lectures/confirm/', json.dumps({
+            'title': 'New Lesson',
+            'course': 'forex_gold',
+            'video_path': 'lectures/forex_gold/test.mp4'
+        }), content_type='application/json')
+        self.assertEqual(response.status_code, 302)
+
+    def test_admin_lecture_confirm_security_non_admin(self):
+        self.client.login(email='student@example.com', password='StudentPassword123')
+        response = self.client.post('/admin/lectures/confirm/', json.dumps({
+            'title': 'New Lesson',
+            'course': 'forex_gold',
+            'video_path': 'lectures/forex_gold/test.mp4'
+        }), content_type='application/json')
+        self.assertEqual(response.status_code, 404)
+
+    def test_admin_lecture_confirm_success(self):
         from courses.models import Lecture
-        self.assertFalse(Lecture.objects.filter(title='Oversized Lesson').exists())
-        self.assertContains(response, 'exceeds maximum allowed limit')
+        self.client.login(email='admin@tradingacademy.com', password='AdminPassword123')
+        response = self.client.post('/admin/lectures/confirm/', json.dumps({
+            'title': 'Direct Uploaded Lesson',
+            'description': 'Direct upload test notes',
+            'course': 'forex_gold',
+            'position': 5,
+            'duration_seconds': 1500,
+            'video_path': 'lectures/forex_gold/0123456789abcdef.mp4'
+        }), content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+
+        lec = Lecture.objects.get(title='Direct Uploaded Lesson')
+        self.assertEqual(lec.course, 'forex_gold')
+        self.assertEqual(lec.position, 5)
+        self.assertEqual(lec.duration_seconds, 1500)
+        self.assertEqual(lec.video_path, 'lectures/forex_gold/0123456789abcdef.mp4')
 
     def test_admin_lecture_delete(self):
         from courses.models import Lecture

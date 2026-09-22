@@ -424,7 +424,7 @@
       <button onclick="closeUploadModal()" style="background: transparent; border: none; color: #94a3b8; font-size: 1.25rem; cursor: pointer;">✕</button>
     </div>
 
-    <form method="POST" enctype="multipart/form-data">
+    <form id="uploadLectureForm" onsubmit="handleDirectUpload(event)">
       {% csrf_token %}
       <div class="form-group">
         <label for="id_title">Lecture Title *</label>
@@ -470,13 +470,33 @@
         <input type="file" id="id_video_file" name="video_file" accept=".mp4,.mov,.webm,.m4v" style="display: none;" required onchange="handleFileSelected(this)">
       </div>
 
-      <div id="uploadSizeWarning" style="display: none; padding: 10px 14px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; color: #f87171; font-size: 0.8rem; margin-bottom: 16px;">
+      <!-- Direct Upload Progress Bar Container -->
+      <div id="uploadProgressContainer" style="display: none; margin-top: 14px; padding: 14px; background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span id="uploadStatusText" style="font-size: 0.8125rem; font-weight: 600; color: #38bdf8;">
+            Preparing direct upload to Supabase...
+          </span>
+          <span id="uploadPercentText" style="font-size: 0.8125rem; font-weight: 700; color: #ffffff;">
+            0%
+          </span>
+        </div>
+        <div style="width: 100%; height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden;">
+          <div id="uploadProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #2563eb); transition: width 0.15s ease-out; border-radius: 4px;"></div>
+        </div>
+        <div id="uploadSubText" style="margin-top: 6px; font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+          <span id="uploadBytesText">0 MB / 0 MB</span>
+          <span style="color: #4ade80;">⚡ Direct-to-Supabase (bypasses Vercel)</span>
+        </div>
+      </div>
+
+      <div id="uploadSizeWarning" style="display: none; padding: 10px 14px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; color: #f87171; font-size: 0.8rem; margin-top: 12px; margin-bottom: 12px;">
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
-        <button type="button" onclick="closeUploadModal()" class="btn btn-secondary btn-sm">Cancel</button>
-        <button type="submit" id="submitUploadBtn" class="btn btn-primary btn-sm" style="font-weight: 700;">
-          Start Upload to Supabase &rarr;
+        <button type="button" id="cancelUploadBtn" onclick="closeUploadModal()" class="btn btn-secondary btn-sm">Cancel</button>
+        <button type="submit" id="submitUploadBtn" class="btn btn-primary btn-sm" style="font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+          <span id="submitUploadBtnIcon">☁️</span>
+          <span id="submitUploadBtnText">Start Direct Upload &rarr;</span>
         </button>
       </div>
     </form>
@@ -603,12 +623,39 @@
 
 <script>
   const MAX_BYTES = {{ stats.max_size_mb }} * 1024 * 1024;
+  let activeUploadXhr = null;
 
   function openUploadModal() {
     document.getElementById('uploadModal').classList.add('active');
   }
+
   function closeUploadModal() {
+    if (activeUploadXhr) {
+      if (confirm("An upload is currently in progress. Cancel upload?")) {
+        activeUploadXhr.abort();
+        activeUploadXhr = null;
+      } else {
+        return;
+      }
+    }
     document.getElementById('uploadModal').classList.remove('active');
+    resetUploadFormState();
+  }
+
+  function resetUploadFormState() {
+    const warning = document.getElementById('uploadSizeWarning');
+    const progressContainer = document.getElementById('uploadProgressContainer');
+    const submitBtn = document.getElementById('submitUploadBtn');
+    const submitText = document.getElementById('submitUploadBtnText');
+    const submitIcon = document.getElementById('submitUploadBtnIcon');
+    const cancelBtn = document.getElementById('cancelUploadBtn');
+
+    if (warning) warning.style.display = 'none';
+    if (progressContainer) progressContainer.style.display = 'none';
+    if (submitBtn) submitBtn.disabled = false;
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (submitIcon) submitIcon.innerText = '☁️';
+    if (submitText) submitText.innerText = 'Start Direct Upload \u2192';
   }
 
   function handleFileSelected(input) {
@@ -629,6 +676,218 @@
         warning.style.display = 'none';
         btn.disabled = false;
       }
+    }
+  }
+
+  function getCsrfToken() {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, 10) === ('csrftoken=')) {
+          cookieValue = decodeURIComponent(cookie.substring(10));
+          break;
+        }
+      }
+    }
+    if (!cookieValue) {
+      const el = document.querySelector('[name=csrfmiddlewaretoken]');
+      if (el) cookieValue = el.value;
+    }
+    return cookieValue;
+  }
+
+  async function handleDirectUpload(e) {
+    e.preventDefault();
+
+    const titleInput = document.getElementById('id_title');
+    const courseSelect = document.getElementById('id_course');
+    const positionInput = document.getElementById('id_position');
+    const durationInput = document.getElementById('id_duration_seconds');
+    const descInput = document.getElementById('id_description');
+    const fileInput = document.getElementById('id_video_file');
+
+    const title = titleInput.value.trim();
+    const course = courseSelect.value.trim();
+    const position = positionInput.value.trim();
+    const duration_seconds = durationInput.value.trim();
+    const description = descInput.value.trim();
+
+    if (!title) {
+      alert("Please enter a lecture title.");
+      titleInput.focus();
+      return;
+    }
+    if (!fileInput.files || !fileInput.files[0]) {
+      alert("Please select a video file to upload.");
+      return;
+    }
+
+    const file = fileInput.files[0];
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    const allowed = ['.mp4', '.mov', '.webm', '.m4v'];
+    if (!allowed.includes(ext)) {
+      alert(`Invalid video format '${ext}'. Allowed: MP4, MOV, WEBM, M4V.`);
+      return;
+    }
+
+    if (file.size > MAX_BYTES) {
+      alert(`File size exceeds maximum allowed limit of ${ {{ stats.max_size_mb }} } MB.`);
+      return;
+    }
+
+    // UI elements
+    const submitBtn = document.getElementById('submitUploadBtn');
+    const submitText = document.getElementById('submitUploadBtnText');
+    const submitIcon = document.getElementById('submitUploadBtnIcon');
+    const cancelBtn = document.getElementById('cancelUploadBtn');
+    const warning = document.getElementById('uploadSizeWarning');
+    const progressContainer = document.getElementById('uploadProgressContainer');
+    const progressBar = document.getElementById('uploadProgressBar');
+    const percentText = document.getElementById('uploadPercentText');
+    const statusText = document.getElementById('uploadStatusText');
+    const bytesText = document.getElementById('uploadBytesText');
+
+    warning.style.display = 'none';
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    percentText.innerText = '0%';
+    statusText.innerText = '1/3: Authorizing direct upload with Supabase...';
+    bytesText.innerText = `0 / ${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+    submitBtn.disabled = true;
+    cancelBtn.disabled = true;
+    submitIcon.innerText = '⏳';
+    submitText.innerText = 'Authorizing...';
+
+    const csrfToken = getCsrfToken();
+
+    try {
+      // STEP 1: Request signed upload URL from Django (Metadata only, < 1 KB)
+      const urlRes = await fetch('/admin/lectures/upload-url/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          course: course,
+          title: title,
+          file_size: file.size,
+        })
+      });
+
+      if (!urlRes.ok) {
+        let errData = {};
+        try { errData = await urlRes.json(); } catch(_) {}
+        throw new Error(errData.error || `Server responded with HTTP ${urlRes.status} on upload authorization.`);
+      }
+
+      const urlData = await urlRes.json();
+      if (!urlData.success || !urlData.signed_url) {
+        throw new Error(urlData.error || 'Failed to acquire Supabase signed upload URL.');
+      }
+
+      const signedUploadUrl = urlData.signed_url;
+      const targetVideoPath = urlData.video_path;
+
+      // STEP 2: Upload file DIRECTLY from browser to Supabase Storage via PUT
+      // (This payload goes straight to Supabase - NEVER touches Vercel / Django)
+      statusText.innerText = `2/3: Uploading directly to Supabase Storage (${(file.size / (1024 * 1024)).toFixed(1)} MB)...`;
+      submitText.innerText = 'Uploading...';
+
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        activeUploadXhr = xhr;
+
+        xhr.upload.onprogress = function(event) {
+          if (event.lengthComputable) {
+            const pct = Math.round((event.loaded / event.total) * 100);
+            progressBar.style.width = pct + '%';
+            percentText.innerText = pct + '%';
+            const loadedMb = (event.loaded / (1024 * 1024)).toFixed(1);
+            const totalMb = (event.total / (1024 * 1024)).toFixed(1);
+            bytesText.innerText = `${loadedMb} MB / ${totalMb} MB`;
+          }
+        };
+
+        xhr.onload = function() {
+          activeUploadXhr = null;
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            let detail = '';
+            try {
+              detail = xhr.responseText ? `: ${xhr.responseText}` : '';
+            } catch(_) {}
+            reject(new Error(`Supabase direct upload failed (HTTP ${xhr.status})${detail}`));
+          }
+        };
+
+        xhr.onerror = function() {
+          activeUploadXhr = null;
+          reject(new Error('Network error during direct upload to Supabase Storage. Check network connection or CORS.'));
+        };
+
+        xhr.onabort = function() {
+          activeUploadXhr = null;
+          reject(new Error('Upload was cancelled.'));
+        };
+
+        xhr.open('PUT', signedUploadUrl, true);
+        xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
+        xhr.send(file);
+      });
+
+      // STEP 3: Confirm upload with Django and create Lecture record (Metadata only, < 1 KB)
+      progressBar.style.width = '100%';
+      percentText.innerText = '100%';
+      statusText.innerText = '3/3: Registering lecture record in database...';
+      submitText.innerText = 'Finalizing...';
+
+      const confirmRes = await fetch('/admin/lectures/confirm/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+          title: title,
+          description: description,
+          course: course,
+          position: position,
+          duration_seconds: duration_seconds,
+          video_path: targetVideoPath,
+        })
+      });
+
+      if (!confirmRes.ok) {
+        let errData = {};
+        try { errData = await confirmRes.json(); } catch(_) {}
+        throw new Error(errData.error || `Server responded with HTTP ${confirmRes.status} on lecture registration.`);
+      }
+
+      const confirmData = await confirmRes.json();
+      if (!confirmData.success) {
+        throw new Error(confirmData.error || 'Failed to register lecture record.');
+      }
+
+      statusText.innerText = '✅ Upload & registration complete! Redirecting...';
+      setTimeout(() => {
+        window.location.href = confirmData.redirect_url || `/admin/lectures/?course=${course}`;
+      }, 500);
+
+    } catch (err) {
+      console.error('Upload flow error:', err);
+      warning.style.display = 'block';
+      warning.innerHTML = `❌ <strong>Upload Failed:</strong> ${err.message}`;
+      submitBtn.disabled = false;
+      cancelBtn.disabled = false;
+      submitIcon.innerText = '☁️';
+      submitText.innerText = 'Retry Direct Upload';
+      statusText.innerText = 'Upload failed';
     }
   }
 

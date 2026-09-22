@@ -38,6 +38,57 @@ def get_lecture_bucket_name():
     return bucket
 
 
+def create_signed_upload_url(file_path, expires_in=7200):
+    """
+    Generates a signed upload URL from Supabase Storage allowing direct browser PUT uploads.
+    Bypasses Vercel/Django completely for the file transfer payload.
+    Returns (success: bool, signed_url_or_error: str, token: str or None).
+    """
+    if not file_path:
+        return False, "File path is required", None
+
+    supabase_url, supabase_key, bucket = get_supabase_lecture_storage_config()
+
+    if not supabase_url or not supabase_key:
+        # Dev / fallback local mock upload URL
+        return True, f"/mock-upload/{bucket}/{file_path}", "mock_token"
+
+    sign_endpoint = f"{supabase_url}/storage/v1/object/upload/sign/{bucket}/{file_path}"
+    headers = {
+        'Authorization': f"Bearer {supabase_key}",
+        'apiKey': supabase_key,
+        'Content-Type': 'application/json',
+    }
+
+    try:
+        response = requests.post(
+            sign_endpoint,
+            headers=headers,
+            json={'upsert': True},
+            timeout=15
+        )
+        if response.status_code in [200, 201]:
+            data = response.json()
+            rel_or_full = data.get('url') or data.get('signedURL') or data.get('signedUrl')
+            token = data.get('token', '')
+            if rel_or_full:
+                if rel_or_full.startswith('http://') or rel_or_full.startswith('https://'):
+                    full_upload_url = rel_or_full
+                elif rel_or_full.startswith('/storage/v1/'):
+                    full_upload_url = f"{supabase_url}{rel_or_full}"
+                elif rel_or_full.startswith('/'):
+                    full_upload_url = f"{supabase_url}/storage/v1{rel_or_full}"
+                else:
+                    full_upload_url = f"{supabase_url}/storage/v1/{rel_or_full}"
+
+                return True, full_upload_url, token
+            return False, f"Supabase Storage returned unexpected response: {data}", None
+        else:
+            return False, f"Supabase Storage upload-sign error ({response.status_code}): {response.text}", None
+    except Exception as exc:
+        return False, str(exc), None
+
+
 def upload_lecture_file(uploaded_file, file_path, content_type=None):
     """
     Uploads video file bytes to the private Supabase Storage bucket via REST API.
