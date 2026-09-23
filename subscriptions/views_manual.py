@@ -113,6 +113,10 @@ def manual_checkout_view(request, plan_key):
         user_id=request.user.id
     )
     qr_data_uri = generate_upi_qr_data_uri(upi_deep_link)
+    if not qr_data_uri:
+        print(f"[UPI_QR_ERROR] manual_checkout_view: generate_upi_qr_data_uri returned empty string! upi_deep_link={upi_deep_link}", flush=True)
+    else:
+        print(f"[UPI_QR_OK] manual_checkout_view: Generated QR for {plan_code}: len={len(qr_data_uri)}", flush=True)
 
     base_context = {
         'plan_code': plan_code,
