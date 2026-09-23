@@ -1,15 +1,42 @@
+import os
 import traceback
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 
 
 def health_check(request):
-    return JsonResponse({
+    data = {
         'status': 'ok',
         'host': request.get_host(),
         'allowed_hosts': settings.ALLOWED_HOSTS,
         'is_vercel': getattr(settings, 'IS_VERCEL', False),
-    })
+        'vercel_git_commit_sha': os.getenv('VERCEL_GIT_COMMIT_SHA', 'unknown'),
+    }
+    # Diagnostic test for UPI QR generation
+    try:
+        from subscriptions.manual_upi_utils import (
+            get_upi_config,
+            generate_upi_deep_link,
+            generate_upi_qr_data_uri,
+            QRCODE_IMPORT_ERROR,
+        )
+        upi_id, payee, phone = get_upi_config()
+        link = generate_upi_deep_link(upi_id or '9313858614@ibl', payee or 'Tradex Academy', 3999, 'starter')
+        qr_uri = generate_upi_qr_data_uri(link)
+        data['qr_diagnostics'] = {
+            'qrcode_import_error': QRCODE_IMPORT_ERROR,
+            'test_link': link,
+            'qr_len': len(qr_uri),
+            'qr_prefix': qr_uri[:45] if qr_uri else '',
+            'success': bool(qr_uri),
+        }
+    except Exception as e:
+        data['qr_diagnostics'] = {
+            'exception': f"{type(e).__name__}: {str(e)}",
+            'traceback': traceback.format_exc(),
+            'success': False,
+        }
+    return JsonResponse(data)
 
 
 def bad_request_handler(request, exception=None):

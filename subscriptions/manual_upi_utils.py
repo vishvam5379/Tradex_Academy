@@ -4,15 +4,20 @@ import base64
 import re
 import urllib.parse
 import logging
+import traceback
 import requests
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+QRCODE_IMPORT_ERROR = None
 try:
     import qrcode
-except ImportError:
+    import qrcode.image.svg
+except Exception as e:
     qrcode = None
+    QRCODE_IMPORT_ERROR = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
+    print(f"[UPI_QR_ERROR] Failed to import qrcode: {QRCODE_IMPORT_ERROR}", flush=True)
 
 
 def get_upi_config():
@@ -43,16 +48,51 @@ def generate_upi_deep_link(upi_id, payee_name, amount, plan_key, user_id=None):
 
 def generate_upi_qr_data_uri(upi_uri):
     """
-    Generate an offline QR Code as a base64 PNG data URI.
+    Generate an offline QR Code as a data URI (SVG preferred, PNG fallback).
     No 3rd party external service receives user or payment data.
+    Uses pure-Python SVG (ElementTree) to avoid C-extension/Pillow dependency failures on serverless runtimes like Vercel.
     """
+    global qrcode
     if not upi_uri:
+        err = "[UPI_QR_ERROR] Empty upi_uri passed to generate_upi_qr_data_uri."
+        print(err, flush=True)
+        logger.error(err)
         return ""
 
     if qrcode is None:
-        logger.warning("qrcode module is not installed. QR data URI cannot be generated server-side.")
-        return ""
+        try:
+            import qrcode as _qr
+            import qrcode.image.svg
+            qrcode = _qr
+        except Exception as e_dyn:
+            err = f"[UPI_QR_ERROR] qrcode package is NOT available at runtime. Import exception was: {QRCODE_IMPORT_ERROR or e_dyn}"
+            print(err, flush=True)
+            logger.error(err)
+            return ""
 
+    # Primary: SVG via SvgPathImage (100% pure Python ElementTree, ZERO Pillow, ZERO C-libraries)
+    try:
+        import qrcode.image.svg
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=2,
+        )
+        qr.add_data(upi_uri)
+        qr.make(fit=True)
+
+        img = qr.make_image(image_factory=qrcode.image.svg.SvgPathImage)
+        buffer = io.BytesIO()
+        img.save(buffer)
+        b64_encoded = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        return f"data:image/svg+xml;base64,{b64_encoded}"
+    except Exception as e_svg:
+        err_svg = f"[UPI_QR_ERROR] SvgPathImage generation failed: {type(e_svg).__name__}: {e_svg}\n{traceback.format_exc()}"
+        print(err_svg, flush=True)
+        logger.error(err_svg)
+
+    # Fallback: Try Pillow PNG if SVG failed
     try:
         qr = qrcode.QRCode(
             version=None,
@@ -68,9 +108,12 @@ def generate_upi_qr_data_uri(upi_uri):
         img.save(buffer, format="PNG")
         b64_encoded = base64.b64encode(buffer.getvalue()).decode('utf-8')
         return f"data:image/png;base64,{b64_encoded}"
-    except Exception as e:
-        logger.error(f"Error generating UPI QR code image: {e}", exc_info=True)
-        return ""
+    except Exception as e_png:
+        err_png = f"[UPI_QR_ERROR] Pillow PNG generation failed: {type(e_png).__name__}: {e_png}\n{traceback.format_exc()}"
+        print(err_png, flush=True)
+        logger.error(err_png)
+
+    return ""
 
 
 def get_supabase_storage_config():
