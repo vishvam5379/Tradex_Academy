@@ -3,8 +3,11 @@ import io
 import base64
 import re
 import urllib.parse
+import logging
 import requests
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 try:
     import qrcode
@@ -23,16 +26,18 @@ def get_upi_config():
 def generate_upi_deep_link(upi_id, payee_name, amount, plan_key, user_id=None):
     """
     Format: upi://pay?pa=<MANUAL_UPI_ID>&pn=<MANUAL_UPI_NAME>&am=<amount>&cu=INR&tn=TRADEX-<plan_key>
+    Uses quote_via=quote and safe='@' so pa retains literal '@' and pn uses '%20' for UPI app compatibility.
     """
     note = f"TRADEX-{plan_key}"
-    params = {
-        'pa': upi_id,
-        'pn': payee_name,
-        'am': f"{float(amount):.2f}",
-        'cu': 'INR',
-        'tn': note,
-    }
-    query_string = urllib.parse.urlencode(params)
+    amt_str = f"{float(amount):.2f}".rstrip('0').rstrip('.') if float(amount).is_integer() else f"{float(amount):.2f}"
+    params = [
+        ('pa', (upi_id or '').strip()),
+        ('pn', (payee_name or '').strip()),
+        ('am', amt_str),
+        ('cu', 'INR'),
+        ('tn', note),
+    ]
+    query_string = urllib.parse.urlencode(params, quote_via=urllib.parse.quote, safe='@')
     return f"upi://pay?{query_string}"
 
 
@@ -41,23 +46,31 @@ def generate_upi_qr_data_uri(upi_uri):
     Generate an offline QR Code as a base64 PNG data URI.
     No 3rd party external service receives user or payment data.
     """
-    if qrcode is None:
+    if not upi_uri:
         return ""
 
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=8,
-        border=2,
-    )
-    qr.add_data(upi_uri)
-    qr.make(fit=True)
+    if qrcode is None:
+        logger.warning("qrcode module is not installed. QR data URI cannot be generated server-side.")
+        return ""
 
-    img = qr.make_image(fill_color="black", back_color="white")
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    b64_encoded = base64.b64encode(buffer.getvalue()).decode('utf-8')
-    return f"data:image/png;base64,{b64_encoded}"
+    try:
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=8,
+            border=2,
+        )
+        qr.add_data(upi_uri)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill_color="black", back_color="white")
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        b64_encoded = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        return f"data:image/png;base64,{b64_encoded}"
+    except Exception as e:
+        logger.error(f"Error generating UPI QR code image: {e}", exc_info=True)
+        return ""
 
 
 def get_supabase_storage_config():

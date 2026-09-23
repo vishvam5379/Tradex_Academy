@@ -86,40 +86,6 @@
       </div>
       {% endif %}
 
-      <div class="nav-section-title" style="margin-top: 16px;">📈 Markets (Curriculum)</div>
-
-      <!-- Categories & Subcategories Tree -->
-      {% for cat in sidebar_categories %}
-      <div class="category-tree-group">
-        <div class="category-parent-header">
-          <div class="category-parent-title">
-            {% if cat.slug == 'forex' %}
-            <i data-lucide="globe" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
-            {% else %}
-            <i data-lucide="trending-up" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
-            {% endif %}
-            <span>{{ cat.name }}</span>
-          </div>
-          <i data-lucide="chevron-down" class="tree-chevron" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
-        </div>
-
-        <ul class="subcategory-list">
-          {% for sub in cat.subcategories.all %}
-          <li class="subcategory-item">
-            <a href="{% url 'courses:category_videos' cat.slug sub.slug %}" 
-               class="subcategory-link {% if request.resolver_match.kwargs.category_slug == cat.slug and request.resolver_match.kwargs.subcategory_slug == sub.slug %}active{% endif %}"
-               id="nav-sub-{{ sub.slug }}">
-              <span>{{ sub.name }}</span>
-              <span class="badge badge-gray num" style="font-size: 0.6875rem; padding: 1px 5px;">{{ sub.videos.count }}</span>
-            </a>
-          </li>
-          {% empty %}
-          <li style="padding: 6px 12px; font-size: 0.75rem; color: var(--text-muted);">No categories available</li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% endfor %}
-
     </nav>
 
     <!-- Sidebar Plan Indicator -->

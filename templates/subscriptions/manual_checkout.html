@@ -121,7 +121,7 @@
         <div style="margin: 16px 0;">
           <div class="qr-box">
             {% if qr_data_uri %}
-              <img src="{{ qr_data_uri }}" alt="UPI QR Code for {{ plan_name }}">
+              <img id="upiQrImg" src="{{ qr_data_uri }}" alt="UPI QR Code for {{ plan_name }}">
             {% else %}
               <div style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; color: #000; font-size: 0.8rem;">
                 Scan with any UPI app
