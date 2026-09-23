@@ -11,9 +11,22 @@ document.addEventListener('DOMContentLoaded', () => {
       backdrop.classList.toggle('active');
     });
 
-    backdrop.addEventListener('click', () => {
-      sidebar.classList.remove('open');
-      backdrop.classList.remove('active');
+    const sidebarClose = document.getElementById('mobileSidebarClose');
+    if (sidebarClose) {
+      sidebarClose.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('active');
+      });
+    }
+
+    const sidebarLinks = sidebar.querySelectorAll('.nav-link');
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 900) {
+          sidebar.classList.remove('open');
+          backdrop.classList.remove('active');
+        }
+      });
     });
   }
 

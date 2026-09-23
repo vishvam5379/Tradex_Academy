@@ -434,9 +434,53 @@
   color: var(--text-muted);
 }
 
+/* Mobile Sidebar Close Button */
+.mobile-sidebar-close {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.mobile-sidebar-close:hover {
+  color: var(--text-primary);
+}
+
+/* Course Tracks Grid Component */
+.course-tracks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+/* Welcome Card Component */
+.dash-welcome-card {
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  gap: 16px;
+}
+
+.dash-welcome-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 @media (max-width: 900px) {
   .dashboard-sidebar {
     transform: translateX(-100%);
+    width: 280px;
   }
   .dashboard-sidebar.open {
     transform: translateX(0);
@@ -447,6 +491,9 @@
   .mobile-sidebar-toggle {
     display: block;
   }
+  .mobile-sidebar-close {
+    display: block;
+  }
   .sidebar-backdrop {
     display: none;
     position: fixed;
@@ -454,7 +501,8 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
     z-index: 45;
   }
   .sidebar-backdrop.active {
@@ -463,5 +511,62 @@
   .paywall-banner {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    padding: 0 12px;
+  }
+  .dashboard-content {
+    padding: 16px 12px;
+  }
+  .header-right {
+    gap: 8px;
+  }
+  .header-right .hide-on-mobile {
+    display: none !important;
+  }
+  .header-subscribe-btn {
+    padding: 5px 8px;
+    font-size: 0.72rem;
+  }
+  .user-profile-badge {
+    padding: 3px;
+    border-radius: 50%;
+  }
+  .user-profile-badge .user-profile-name {
+    display: none !important;
+  }
+  .dash-welcome-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+    gap: 12px;
+  }
+  .dash-welcome-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .dash-welcome-actions .btn {
+    flex: 1;
+    min-width: 130px;
+    text-align: center;
+    justify-content: center;
+  }
+  .course-tracks-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+  }
+  #notificationMenu {
+    max-width: calc(100vw - 24px) !important;
+    right: -10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-header .header-left span {
+    display: none; /* Hide header title text on narrow phones */
   }
 }

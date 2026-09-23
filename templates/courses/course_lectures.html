@@ -52,6 +52,27 @@
     flex-shrink: 0;
     color: #38bdf8;
   }
+  @media (max-width: 640px) {
+    .course-wrap {
+      padding: 16px 12px 60px;
+    }
+    .course-header {
+      padding: 20px 16px;
+      gap: 14px;
+    }
+    .lecture-card {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 16px;
+      gap: 12px;
+    }
+    .lecture-card .btn {
+      width: 100%;
+      text-align: center;
+      justify-content: center;
+      display: flex;
+    }
+  }
 </style>
 {% endblock %}
 

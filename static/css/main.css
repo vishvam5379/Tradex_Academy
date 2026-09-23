@@ -45,6 +45,11 @@
   padding: 0;
 }
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--bg-app);
@@ -334,6 +339,12 @@ a:hover {
   padding: 0 24px;
 }
 
+@media (max-width: 640px) {
+  .container {
+    padding: 0 16px;
+  }
+}
+
 .grid-2 {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -351,3 +362,184 @@ a:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* Brand Logo Component (Universal) */
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brand-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
+  background-color: var(--accent-primary-subtle);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+/* Features List Component (Universal) */
+.features-list {
+  list-style: none;
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.feature-check-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-primary);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Site Navbar (Landing & Public Pages) */
+.site-header {
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bg-sidebar);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.site-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  width: 100%;
+}
+
+.site-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.site-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .site-header-inner {
+    padding: 0 12px !important;
+  }
+  .site-nav-links {
+    display: none !important; /* Eliminates collision with logo/auth buttons on mobile */
+  }
+  .site-brand-logo {
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    gap: 6px;
+  }
+  .site-brand-logo .brand-icon {
+    width: 24px;
+    height: 24px;
+  }
+  .site-nav-actions {
+    gap: 4px;
+  }
+  .site-nav-actions .btn {
+    padding: 5px 8px;
+    font-size: 0.75rem;
+  }
+}
+
+/* Hero Section Responsive */
+.hero-title {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.6rem !important;
+    line-height: 1.25 !important;
+  }
+  .hero-actions {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 10px !important;
+  }
+  .hero-actions .btn {
+    width: 100% !important;
+  }
+}
+
+/* Pricing Grid Responsive */
+.pricing-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 20px;
+  align-items: stretch;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .pricing-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .pricing-cards-grid .card {
+    padding: 20px 16px !important;
+  }
+}
+
+/* Messages container mobile containment */
+@media (max-width: 480px) {
+  .messages-container {
+    left: 12px;
+    right: 12px;
+    max-width: none;
+  }
+}
+
+/* Auth Pages Responsive */
+.auth-page-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background-color: var(--bg-app);
+}
+
+.auth-card {
+  padding: 24px;
+}
+
+@media (max-width: 480px) {
+  .auth-page-container {
+    padding: 20px 12px;
+  }
+  .auth-card {
+    padding: 20px 16px !important;
+  }
+}
+
+

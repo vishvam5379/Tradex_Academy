@@ -14,13 +14,14 @@
 
   <!-- Persistent Left Sidebar -->
   <aside class="dashboard-sidebar" id="dashboardSidebar">
-    <div class="sidebar-header">
+    <div class="sidebar-header" style="display: flex; align-items: center; justify-content: space-between;">
       <a href="{% url 'courses:dashboard' %}" class="brand-logo">
         <div class="brand-icon">
           <i data-lucide="bar-chart-2" style="width: 16px; height: 16px;"></i>
         </div>
         <span>TRADEX <span style="color: var(--text-muted); font-weight: 400;">ACADEMY</span></span>
       </a>
+      <button class="mobile-sidebar-close" id="mobileSidebarClose" aria-label="Close navigation">&times;</button>
     </div>
 
     <nav class="sidebar-nav">
@@ -133,10 +134,10 @@
           {{ active_subscription.plan_name }} &mdash; {{ active_subscription.days_remaining }} days left
         </span>
         {% else %}
-        <a href="/pay/starter/" class="badge badge-gray num" style="text-decoration: none; color: var(--text-secondary);">
+        <a href="/pay/starter/" class="badge badge-gray num hide-on-mobile" style="text-decoration: none; color: var(--text-secondary);">
           Not subscribed
         </a>
-        <a href="/pay/starter/" class="btn btn-primary btn-sm">
+        <a href="/pay/starter/" class="btn btn-primary btn-sm header-subscribe-btn">
           Subscribe (₹3,999)
         </a>
         {% endif %}
@@ -205,7 +206,7 @@
           <div class="user-avatar">
             {{ request.user.name|default:request.user.email|slice:":1"|upper }}
           </div>
-          <span>{{ request.user.name|default:request.user.email }}</span>
+          <span class="user-profile-name">{{ request.user.name|default:request.user.email }}</span>
         </a>
         <a href="{% url 'accounts:logout' %}" style="color: var(--text-muted); display: flex; align-items: center;" title="Sign out">
           <i data-lucide="log-out" style="width: 15px; height: 15px;"></i>

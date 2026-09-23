@@ -5,22 +5,22 @@
 
 {% block body_content %}
 <!-- Navbar -->
-<header style="border-bottom: 1px solid var(--border-subtle); background-color: var(--bg-sidebar); position: sticky; top: 0; z-index: 100;">
-  <div class="container" style="display: flex; align-items: center; justify-content: space-between; height: 56px;">
-    <a href="{% url 'courses:landing' %}" class="brand-logo">
+<header class="site-header">
+  <div class="container site-header-inner">
+    <a href="{% url 'courses:landing' %}" class="brand-logo site-brand-logo">
       <div class="brand-icon">
         <i data-lucide="bar-chart-2" style="width: 16px; height: 16px;"></i>
       </div>
       <span>TRADEX <span style="color: var(--text-muted); font-weight: 400;">ACADEMY</span></span>
     </a>
 
-    <nav style="display: flex; align-items: center; gap: 24px;">
+    <nav class="site-nav-links">
       <a href="#curriculum" style="color: var(--text-secondary); font-size: 0.8125rem; font-weight: 500;">Curriculum</a>
       <a href="#pricing" style="color: var(--text-secondary); font-size: 0.8125rem; font-weight: 500;">Pricing</a>
       <a href="#structure" style="color: var(--text-secondary); font-size: 0.8125rem; font-weight: 500;">Market modules</a>
     </nav>
 
-    <div style="display: flex; align-items: center; gap: 8px;">
+    <div class="site-nav-actions">
       {% if user.is_authenticated %}
       <a href="{% url 'courses:dashboard' %}" class="btn btn-primary btn-sm">
         <span>Go to dashboard</span>
@@ -43,7 +43,7 @@
       </span>
     </div>
 
-    <h1 style="font-size: clamp(2rem, 4vw, 3.1rem); font-weight: 700; line-height: 1.2; margin-bottom: 18px; color: var(--text-primary); letter-spacing: -0.02em;">
+    <h1 class="hero-title" style="font-size: clamp(1.75rem, 4vw, 3.1rem); font-weight: 700; line-height: 1.2; margin-bottom: 18px; color: var(--text-primary); letter-spacing: -0.02em;">
       Structured trading education for Spot Gold and Indian financial markets.
     </h1>
 
@@ -51,7 +51,7 @@
       Video lessons covering Spot Gold price action, the complete Forex Gold Mastery system with proprietary strategy indicator, and the Indian Market Foundation stock analysis framework.
     </p>
 
-    <div style="display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;">
+    <div class="hero-actions" style="display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;">
       {% if user.is_authenticated %}
       <a href="{% url 'courses:dashboard' %}" class="btn btn-primary btn-lg">
         Open dashboard
@@ -84,7 +84,7 @@
     <div class="grid-2" style="gap: 24px;">
       <!-- Forex Column -->
       <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px; flex-wrap: wrap; gap: 8px;">
           <div>
             <h3 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 2px;">Forex Gold</h3>
             <span style="font-size: 0.75rem; color: var(--text-muted);">Spot Gold (XAU/USD) & specialized strategy system</span>
@@ -131,7 +131,7 @@
 
       <!-- Indian Market Column -->
       <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px; flex-wrap: wrap; gap: 8px;">
           <div>
             <h3 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 2px;">Indian Market Foundation</h3>
             <span style="font-size: 0.75rem; color: var(--text-muted);">NSE & BSE stock analysis and chart reading</span>
@@ -187,7 +187,7 @@
     </div>
 
     <!-- 3 Pricing Cards Grid -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 20px; align-items: stretch; max-width: 1100px; margin: 0 auto;">
+    <div class="pricing-cards-grid">
       
       <!-- Tier 1: Indian Market Foundation (₹3,999) -->
       <div class="card" style="padding: 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative; background-color: var(--bg-sidebar);">

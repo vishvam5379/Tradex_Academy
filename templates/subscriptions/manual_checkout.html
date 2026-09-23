@@ -50,13 +50,35 @@
     background: rgba(255, 255, 255, 0.12);
     border-color: var(--accent-primary);
   }
+  .checkout-plan-switcher {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  @media (max-width: 640px) {
+    .checkout-plan-switcher {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 8px;
+    }
+    .checkout-plan-switcher .btn {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .copy-chip {
+      min-height: 40px;
+      padding: 8px 12px;
+    }
+  }
 </style>
 {% endblock %}
 
 {% block body_content %}
 <!-- Header -->
 <header style="border-bottom: 1px solid var(--border-subtle); background-color: var(--bg-sidebar); padding: 14px 0;">
-  <div class="container" style="display: flex; align-items: center; justify-content: space-between;">
+  <div class="container" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
     <a href="{% url 'courses:dashboard' %}" class="brand-logo">
       <div class="brand-icon">
         <i data-lucide="bar-chart-2" style="width: 16px; height: 16px;"></i>
@@ -71,7 +93,7 @@
   </div>
 </header>
 
-<main class="container" style="padding: 40px 0 60px;">
+<main class="container" style="padding: 24px 0 60px;">
   <div style="max-width: 960px; margin: 0 auto;">
     
     <div style="margin-bottom: 24px;">
@@ -87,7 +109,7 @@
       </p>
 
       <!-- Quick Plan Switcher -->
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+      <div class="checkout-plan-switcher">
         <a href="/pay/starter/" class="btn btn-sm {% if plan_code == 'starter' %}btn-primary{% else %}btn-ghost{% endif %}" style="border-radius: 20px; font-size: 0.8125rem; text-decoration: none;">
           Indian Market (₹3,999)
         </a>
