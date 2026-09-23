@@ -144,6 +144,28 @@ class Lecture(models.Model):
         return False
 
 
+class LectureProgress(models.Model):
+    """
+    Tracks watch and completion progress for real Supabase-backed course lectures.
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='lecture_progress')
+    lecture = models.ForeignKey(Lecture, on_delete=models.CASCADE, related_name='progress_records')
+    completed = models.BooleanField(default=False)
+    watched_seconds = models.PositiveIntegerField(default=0)
+    last_watched_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'courses_lectureprogress'
+        unique_together = ('user', 'lecture')
+        ordering = ['-last_watched_at']
+        verbose_name = 'Lecture Progress'
+        verbose_name_plural = 'Lecture Progress'
+
+    def __str__(self):
+        return f"{self.user.email} - #{self.lecture.position} {self.lecture.title} ({'Completed' if self.completed else 'In-progress'})"
+
+
 class Video(models.Model):
     """Course Video Lesson"""
     sub_category = models.ForeignKey(SubCategory, on_delete=models.CASCADE, related_name='videos')

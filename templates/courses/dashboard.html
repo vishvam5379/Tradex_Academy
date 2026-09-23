@@ -295,7 +295,7 @@
           <div style="margin-bottom: 16px;">
             <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between;">
               <span>Curriculum Lectures</span>
-              <span>{{ indian_market_lectures|length }} Lessons</span>
+              <span>{{ im_completed }}/{{ im_total }} Completed ({{ im_progress_pct }}%)</span>
             </div>
 
             {% for lec in indian_market_lectures %}
@@ -303,6 +303,9 @@
               <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
                 <span style="font-family: monospace; font-size: 0.75rem; color: #38bdf8; font-weight: 700;">#{{ lec.position }}</span>
                 <span style="font-size: 0.825rem; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ lec.title }}</span>
+                {% if lec.id in completed_lecture_ids %}
+                <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); font-size: 0.65rem; padding: 1px 6px; font-weight: 700;">✓ Completed</span>
+                {% endif %}
               </div>
               <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
                 <span style="font-size: 0.725rem; color: var(--text-muted); font-family: monospace;">{{ lec.duration_formatted }}</span>
@@ -367,7 +370,7 @@
           <div style="margin-bottom: 16px;">
             <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between;">
               <span>Curriculum Lectures</span>
-              <span>{{ forex_gold_lectures|length }} Lessons</span>
+              <span>{{ fg_completed }}/{{ fg_total }} Completed ({{ fg_progress_pct }}%)</span>
             </div>
 
             {% for lec in forex_gold_lectures %}
@@ -375,6 +378,9 @@
               <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
                 <span style="font-family: monospace; font-size: 0.75rem; color: #fbbf24; font-weight: 700;">#{{ lec.position }}</span>
                 <span style="font-size: 0.825rem; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ lec.title }}</span>
+                {% if lec.id in completed_lecture_ids %}
+                <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); font-size: 0.65rem; padding: 1px 6px; font-weight: 700;">✓ Completed</span>
+                {% endif %}
               </div>
               <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
                 <span style="font-size: 0.725rem; color: var(--text-muted); font-family: monospace;">{{ lec.duration_formatted }}</span>
@@ -410,84 +416,98 @@
 
     </div>
 
-    <!-- Supplementary Topics & Subcategories -->
-    <div style="margin-top: 20px;">
-      <h3 style="font-size: 0.95rem; font-weight: 700; color: #ffffff; margin-bottom: 12px;">
-        Topic Breakdown
-      </h3>
+    <!-- Supplementary Topics & Course Progress Breakdown -->
+    <div style="margin-top: 24px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+        <h3 style="font-size: 1rem; font-weight: 700; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 8px;">
+          <span>📊</span> Course Progress &amp; Topic Breakdown
+        </h3>
+        <span style="font-size: 0.75rem; color: #94a3b8;">Real-time completion based on watched lectures</span>
+      </div>
     </div>
 
-    <div class="grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
-      {% for item in subcategories_data %}
-        {% if item.is_accessible %}
-        <!-- Unlocked Course Card -->
-        <div class="card" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; transition: border-color 0.2s;">
+    <div class="grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px;">
+      {% for track in course_tracks_progress %}
+        {% if track.is_accessible %}
+        <!-- Unlocked Course Progress Card -->
+        <div class="card" style="padding: 22px; display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; transition: border-color 0.2s;">
           <div>
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
               <div>
-                <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">
-                  {{ item.obj.parent.name }}
+                <span style="font-size: 0.75rem; color: {% if track.course_slug == 'forex_gold' %}#fbbf24{% else %}#38bdf8{% endif %}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                  {{ track.badge }}
                 </span>
-                <h3 style="font-size: 1.05rem; font-weight: 600; color: #ffffff; margin: 2px 0 0 0;">
-                  {{ item.obj.name }}
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin: 3px 0 0 0;">
+                  {{ track.title }}
                 </h3>
               </div>
-              <span class="badge badge-green" style="font-size: 0.6875rem;">Unlocked</span>
+              <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.35); font-size: 0.7rem; font-weight: 700;">
+                🟢 Unlocked
+              </span>
             </div>
 
-            <p style="font-size: 0.8125rem; color: #cbd5e1; margin-bottom: 12px; line-height: 1.4;">
-              {{ item.obj.description|truncatewords:14 }}
+            <p style="font-size: 0.825rem; color: #cbd5e1; margin-bottom: 14px; line-height: 1.45;">
+              {{ track.description }}
             </p>
 
-            <div class="num" style="font-size: 0.8125rem; color: #94a3b8; margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
-              <span>🎬 {{ item.video_count }} Lessons</span>
-              <span>✅ {{ item.completed_count }} Completed</span>
+            <div class="num" style="font-size: 0.8125rem; color: #94a3b8; margin-bottom: 12px; display: flex; align-items: center; gap: 14px;">
+              <span>🎬 {{ track.video_count }} Lessons</span>
+              <span>✅ {{ track.completed_count }} Completed</span>
             </div>
 
             <!-- Custom Progress Bar -->
-            <div style="margin-bottom: 16px;">
+            <div style="margin-bottom: 18px;">
               <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #94a3b8; margin-bottom: 6px;">
                 <span>Course Progress</span>
-                <span class="num" style="font-weight: 600; color: #38bdf8;">{{ item.progress_pct }}%</span>
+                <span class="num" style="font-weight: 700; color: #38bdf8;">{{ track.progress_pct }}%</span>
               </div>
               <div style="width: 100%; height: 8px; background-color: rgba(15, 23, 42, 0.6); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1);">
-                <div style="width: {{ item.progress_pct }}%; height: 100%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 4px;"></div>
+                <div style="width: {{ track.progress_pct }}%; height: 100%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 4px; transition: width 0.3s ease;"></div>
               </div>
             </div>
           </div>
 
-          <a href="{% url 'courses:category_videos' item.obj.parent.slug item.obj.slug %}" class="btn btn-primary btn-sm btn-block" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-            <span>Continue Learning</span>
+          {% if track.next_lecture %}
+          <a href="{% url 'courses:lecture_player' track.next_lecture.id %}" class="btn btn-primary btn-sm btn-block" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; {% if track.course_slug == 'forex_gold' %}background: linear-gradient(135deg, #f59e0b, #d97706); border: none;{% endif %}">
+            <span>Continue Learning (#{{ track.next_lecture.position }})</span>
             <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
           </a>
+          {% else %}
+          <a href="{{ track.curriculum_url }}" class="btn btn-secondary btn-sm btn-block" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700;">
+            <span>View Full Curriculum &rarr;</span>
+          </a>
+          {% endif %}
         </div>
         {% else %}
         <!-- Locked Course Card -->
-        <div class="card" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9)); border: 1px dashed rgba(255, 255, 255, 0.2); border-radius: 12px; opacity: 0.85;">
+        <div class="card" style="padding: 22px; display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9)); border: 1px dashed rgba(255, 255, 255, 0.2); border-radius: 12px; opacity: 0.9;">
           <div>
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
               <div>
-                <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">
-                  {{ item.obj.parent.name }}
+                <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                  {{ track.badge }}
                 </span>
-                <h3 style="font-size: 1.05rem; font-weight: 600; color: #ffffff; margin: 2px 0 0 0;">
-                  {{ item.obj.name }}
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin: 3px 0 0 0;">
+                  {{ track.title }}
                 </h3>
               </div>
-              <span class="badge badge-red" style="font-size: 0.6875rem; display: inline-flex; align-items: center; gap: 4px;">
+              <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
                 <i data-lucide="lock" style="width: 11px; height: 11px;"></i> Locked
               </span>
             </div>
 
-            <p style="font-size: 0.8125rem; color: #94a3b8; margin-bottom: 16px; line-height: 1.4;">
-              🔒 Premium Module. Requires <strong>
-              {% if item.obj.tier_required == 'gold_strategy' %}Forex Gold Mastery Plan (₹9,999){% else %}Indian Market Foundation (₹3,999){% endif %}
-              </strong> or Complete Trader.
+            <p style="font-size: 0.825rem; color: #94a3b8; margin-bottom: 14px; line-height: 1.45;">
+              🔒 Premium Curriculum. Requires <strong>{{ track.plan_title }}</strong> or Complete Trader.
             </p>
+
+            <div class="num" style="font-size: 0.8125rem; color: #64748b; margin-bottom: 16px; display: flex; align-items: center; gap: 14px;">
+              <span>🎬 {{ track.video_count }} Lessons</span>
+              <span>🔒 Subscription Required</span>
+            </div>
           </div>
 
-          <a href="/pay/{{ item.obj.tier_required }}/" class="btn btn-secondary btn-sm btn-block">
-            <span>Unlock Module &rarr;</span>
+          <a href="{{ track.unlock_url }}" class="btn btn-secondary btn-sm btn-block" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700;">
+            <span>Unlock {{ track.title }} &rarr;</span>
           </a>
         </div>
         {% endif %}

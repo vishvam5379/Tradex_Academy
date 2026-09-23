@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, SubCategory, Video, WatchProgress, Lecture
+from .models import Category, SubCategory, Video, WatchProgress, Lecture, LectureProgress
 
 
 @admin.register(Lecture)
@@ -8,6 +8,14 @@ class LectureAdmin(admin.ModelAdmin):
     list_filter = ('course',)
     search_fields = ('title', 'description', 'video_path')
     ordering = ('course', 'position', 'id')
+
+
+@admin.register(LectureProgress)
+class LectureProgressAdmin(admin.ModelAdmin):
+    list_display = ('user', 'lecture', 'completed', 'watched_seconds', 'last_watched_at')
+    list_filter = ('completed', 'lecture__course')
+    search_fields = ('user__email', 'user__name', 'lecture__title')
+    ordering = ('-last_watched_at',)
 
 
 class SubCategoryInline(admin.TabularInline):

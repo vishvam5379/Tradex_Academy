@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.utils import timezone
 import json
 
-from .models import Category, SubCategory, Video, WatchProgress, CommunityChannel, CommunityMessage, Lecture
+from .models import Category, SubCategory, Video, WatchProgress, CommunityChannel, CommunityMessage, Lecture, LectureProgress
 from .lecture_storage import get_signed_lecture_url
 
 
@@ -45,31 +45,10 @@ def landing_page(request):
 @login_required
 def dashboard_home(request):
     """LMS Dashboard matching the requested subscription, courses, community, and payment layout."""
-    subcategories = SubCategory.objects.select_related('parent').prefetch_related('videos').all().order_by('order')
-    
-    subcategories_data = []
-    for sub in subcategories:
-        is_accessible = sub.is_accessible_by(request.user)
-        v_count = sub.videos.count()
-        c_count = WatchProgress.objects.filter(user=request.user, video__sub_category=sub, completed=True).count()
-        progress_pct = round((c_count / v_count * 100)) if v_count > 0 else 0
-        
-        # Get first video for continue button
-        first_video = sub.videos.order_by('order', 'id').first()
-        
-        subcategories_data.append({
-            'obj': sub,
-            'is_accessible': is_accessible,
-            'video_count': v_count,
-            'completed_count': c_count,
-            'progress_pct': progress_pct,
-            'first_video': first_video,
-        })
-    
-    # Recent watch progress
-    recent_watched = WatchProgress.objects.filter(
+    # Recent watch progress for real lectures
+    recent_watched = LectureProgress.objects.filter(
         user=request.user
-    ).select_related('video', 'video__sub_category', 'video__sub_category__parent').order_by('-updated_at').first()
+    ).select_related('lecture').order_by('-last_watched_at').first()
     
     # Active & all payments
     active_sub = request.user.active_subscription
@@ -279,8 +258,64 @@ def dashboard_home(request):
         any(p in ['gold_strategy', 'pro', 'combo', 'elite'] for p in active_plan_types)
     )
 
+    # Real watch progress metrics tied directly to Lecture and LectureProgress
+    completed_lecture_ids = set(
+        LectureProgress.objects.filter(user=request.user, completed=True).values_list('lecture_id', flat=True)
+    )
+
+    fg_total = len(forex_gold_lectures)
+    fg_completed = sum(1 for lec in forex_gold_lectures if lec.id in completed_lecture_ids)
+    fg_pct = round((fg_completed / fg_total * 100)) if fg_total > 0 else 0
+    fg_next_lecture = next((lec for lec in forex_gold_lectures if lec.id not in completed_lecture_ids), None) or (forex_gold_lectures[0] if forex_gold_lectures else None)
+
+    im_total = len(indian_market_lectures)
+    im_completed = sum(1 for lec in indian_market_lectures if lec.id in completed_lecture_ids)
+    im_pct = round((im_completed / im_total * 100)) if im_total > 0 else 0
+    im_next_lecture = next((lec for lec in indian_market_lectures if lec.id not in completed_lecture_ids), None) or (indian_market_lectures[0] if indian_market_lectures else None)
+
+    course_tracks_progress = [
+        {
+            'course_slug': 'forex_gold',
+            'title': 'Forex & Gold Mastery',
+            'badge': '🪙 FOREX & GOLD',
+            'description': 'Institutional Spot Gold (XAU/USD) movement strategies, London Killzone liquidity sweeps, and custom algorithmic indicators.',
+            'is_accessible': can_access_forex_gold,
+            'tier_required': 'gold_strategy',
+            'plan_title': 'Forex Gold Mastery Plan (₹9,999)',
+            'unlock_url': '/pay/pro/',
+            'curriculum_url': '/courses/forex_gold/',
+            'video_count': fg_total,
+            'completed_count': fg_completed,
+            'progress_pct': fg_pct,
+            'next_lecture': fg_next_lecture,
+        },
+        {
+            'course_slug': 'indian_market',
+            'title': 'Indian Market Mastery',
+            'badge': '🇮🇳 INDIAN MARKET',
+            'description': 'Master Indian equities, Nifty/BankNifty derivative mechanics, price action breakouts, and order blocks.',
+            'is_accessible': can_access_indian_market,
+            'tier_required': 'standard',
+            'plan_title': 'Indian Market Foundation (₹3,999)',
+            'unlock_url': '/pay/starter/',
+            'curriculum_url': '/courses/indian_market/',
+            'video_count': im_total,
+            'completed_count': im_completed,
+            'progress_pct': im_pct,
+            'next_lecture': im_next_lecture,
+        },
+    ]
+
     return render(request, 'courses/dashboard.html', {
-        'subcategories_data': subcategories_data,
+        'course_tracks_progress': course_tracks_progress,
+        'subcategories_data': course_tracks_progress,
+        'completed_lecture_ids': completed_lecture_ids,
+        'fg_total': fg_total,
+        'fg_completed': fg_completed,
+        'fg_progress_pct': fg_pct,
+        'im_total': im_total,
+        'im_completed': im_completed,
+        'im_progress_pct': im_pct,
         'has_subscription': bool(active_sub and active_sub.end_date and active_sub.is_currently_active),
         'active_sub': active_sub,
         'active_subscriptions': active_subscriptions,
@@ -394,6 +429,54 @@ def mark_video_complete_api(request, video_id):
         'status': 'success',
         'completed': progress.completed,
         'video_id': video.id
+    })
+
+
+@login_required
+@require_POST
+def mark_lecture_complete_api(request, lecture_id):
+    """
+    AJAX endpoint to record or toggle watch completion for a real Supabase-backed lecture.
+    Accepts JSON body: { "completed": true/false, "watched_seconds": 120 }
+    or empty POST to toggle status.
+    """
+    lecture = get_object_or_404(Lecture, id=lecture_id)
+    if not lecture.is_accessible_by(request.user):
+        return JsonResponse({'status': 'error', 'message': 'Active subscription required.'}, status=403)
+
+    try:
+        payload = json.loads(request.body) if request.body else {}
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        payload = {}
+
+    progress, _ = LectureProgress.objects.get_or_create(user=request.user, lecture=lecture)
+
+    if 'completed' in payload:
+        progress.completed = bool(payload['completed'])
+    else:
+        progress.completed = not progress.completed
+
+    if 'watched_seconds' in payload and isinstance(payload['watched_seconds'], (int, float)):
+        progress.watched_seconds = int(payload['watched_seconds'])
+
+    progress.save()
+
+    total_in_course = Lecture.objects.filter(course=lecture.course).count()
+    completed_in_course = LectureProgress.objects.filter(
+        user=request.user,
+        lecture__course=lecture.course,
+        completed=True
+    ).count()
+    progress_pct = round((completed_in_course / total_in_course * 100)) if total_in_course > 0 else 0
+
+    return JsonResponse({
+        'status': 'success',
+        'completed': progress.completed,
+        'lecture_id': lecture.id,
+        'course': lecture.course,
+        'completed_count': completed_in_course,
+        'total_count': total_in_course,
+        'progress_pct': progress_pct,
     })
 
 
@@ -565,6 +648,17 @@ def lecture_player_view(request, lecture_id, course_slug=None):
     prev_lecture = course_lectures[current_index - 1] if current_index > 0 else None
     next_lecture = course_lectures[current_index + 1] if 0 <= current_index < len(course_lectures) - 1 else None
 
+    user_progress = LectureProgress.objects.filter(user=request.user, lecture=lecture).first()
+    is_completed = user_progress.completed if user_progress else False
+
+    completed_lecture_ids = set(
+        LectureProgress.objects.filter(
+            user=request.user,
+            lecture__course=lecture.course,
+            completed=True
+        ).values_list('lecture_id', flat=True)
+    )
+
     return render(request, 'courses/lecture_player.html', {
         'lecture': lecture,
         'signed_url': signed_url,
@@ -574,6 +668,8 @@ def lecture_player_view(request, lecture_id, course_slug=None):
         'course_name': lecture.get_course_display(),
         'current_index_human': current_index + 1 if current_index >= 0 else 1,
         'total_lectures': len(course_lectures),
+        'is_completed': is_completed,
+        'completed_lecture_ids': completed_lecture_ids,
     })
 
 
@@ -592,6 +688,16 @@ def course_lectures_view(request, course_slug):
     dummy_lecture = Lecture(course=course_slug)
     has_access = dummy_lecture.is_accessible_by(request.user)
 
+    completed_lecture_ids = set(
+        LectureProgress.objects.filter(
+            user=request.user,
+            lecture__course=course_slug,
+            completed=True
+        ).values_list('lecture_id', flat=True)
+    )
+    completed_count = len(completed_lecture_ids)
+    progress_pct = round((completed_count / len(lectures) * 100)) if lectures else 0
+
     return render(request, 'courses/course_lectures.html', {
         'course_slug': course_slug,
         'course_name': course_name,
@@ -599,5 +705,8 @@ def course_lectures_view(request, course_slug):
         'has_access': has_access,
         'recommended_plan': recommended_plan,
         'total_count': len(lectures),
+        'completed_lecture_ids': completed_lecture_ids,
+        'completed_count': completed_count,
+        'progress_pct': progress_pct,
     })
 

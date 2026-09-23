@@ -161,8 +161,13 @@
           </h1>
         </div>
 
-        <!-- Next / Prev Controls -->
-        <div style="display: flex; align-items: center; gap: 8px;">
+        <!-- Next / Prev & Complete Controls -->
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <button id="toggleCompleteBtn" class="btn btn-sm" onclick="toggleLectureCompletion({{ lecture.id }})" style="display: flex; align-items: center; gap: 6px; font-weight: 700; transition: all 0.2s; cursor: pointer; {% if is_completed %}background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4);{% else %}background: rgba(255, 255, 255, 0.08); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, 0.2);{% endif %}">
+            <span id="completeIcon">{% if is_completed %}✅{% else %}⭕{% endif %}</span>
+            <span id="completeText">{% if is_completed %}Completed{% else %}Mark as Complete{% endif %}</span>
+          </button>
+
           {% if prev_lecture %}
           <a href="{% url 'courses:lecture_player' prev_lecture.id %}" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;">
             <span>&larr; Prev</span>
@@ -204,13 +209,22 @@
 
     <div class="playlist-items">
       {% for item in course_lectures %}
-      <a href="{% url 'courses:lecture_player' item.id %}" class="playlist-item {% if item.id == lecture.id %}active{% endif %}">
-        <div class="playlist-pos">
-          {% if item.id == lecture.id %}▶{% else %}{{ item.position }}{% endif %}
+      <a href="{% url 'courses:lecture_player' item.id %}" id="playlist-item-{{ item.id }}" class="playlist-item {% if item.id == lecture.id %}active{% endif %}">
+        <div class="playlist-pos" id="playlist-pos-{{ item.id }}" style="{% if item.id in completed_lecture_ids %}color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.4);{% endif %}">
+          {% if item.id in completed_lecture_ids %}
+            ✓
+          {% elif item.id == lecture.id %}
+            ▶
+          {% else %}
+            {{ item.position }}
+          {% endif %}
         </div>
         <div style="flex: 1; min-width: 0;">
-          <div style="font-weight: 600; font-size: 0.85rem; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-            {{ item.title }}
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+            <span style="font-weight: 600; font-size: 0.85rem; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              {{ item.title }}
+            </span>
+            <span id="badge-completed-{{ item.id }}" style="font-size: 0.7rem; color: #4ade80; font-weight: 700; {% if item.id not in completed_lecture_ids %}display: none;{% endif %}">✓</span>
           </div>
           <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
             {{ item.duration_formatted }}
@@ -222,4 +236,115 @@
   </div>
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function getCsrfToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  let isLectureCompleted = {% if is_completed %}true{% else %}false{% endif %};
+  const currentLectureId = {{ lecture.id }};
+
+  function updateCompletionUI(completed) {
+    isLectureCompleted = completed;
+    const btn = document.getElementById('toggleCompleteBtn');
+    const icon = document.getElementById('completeIcon');
+    const text = document.getElementById('completeText');
+    const playlistPos = document.getElementById(`playlist-pos-${currentLectureId}`);
+    const playlistBadge = document.getElementById(`badge-completed-${currentLectureId}`);
+
+    if (completed) {
+      if (btn) {
+        btn.style.background = 'rgba(34, 197, 94, 0.2)';
+        btn.style.color = '#4ade80';
+        btn.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+      }
+      if (icon) icon.innerText = '✅';
+      if (text) text.innerText = 'Completed';
+      if (playlistPos) {
+        playlistPos.innerText = '✓';
+        playlistPos.style.color = '#4ade80';
+        playlistPos.style.border = '1px solid rgba(74, 222, 128, 0.4)';
+      }
+      if (playlistBadge) playlistBadge.style.display = 'inline';
+    } else {
+      if (btn) {
+        btn.style.background = 'rgba(255, 255, 255, 0.08)';
+        btn.style.color = '#e2e8f0';
+        btn.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+      }
+      if (icon) icon.innerText = '⭕';
+      if (text) text.innerText = 'Mark as Complete';
+      if (playlistPos) {
+        playlistPos.innerText = '▶';
+        playlistPos.style.color = '';
+        playlistPos.style.border = '';
+      }
+      if (playlistBadge) playlistBadge.style.display = 'none';
+    }
+  }
+
+  function toggleLectureCompletion(lectureId, explicitStatus = null) {
+    const payload = {};
+    if (explicitStatus !== null) {
+      payload.completed = explicitStatus;
+    }
+
+    fetch(`/api/lectures/${lectureId}/complete/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCsrfToken(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        updateCompletionUI(data.completed);
+      }
+    })
+    .catch(err => console.error('Error updating lecture progress:', err));
+  }
+
+  // Automatic watch progress hooks on HTML5 video player
+  document.addEventListener('DOMContentLoaded', function() {
+    const video = document.getElementById('lectureVideoPlayer');
+    if (!video) return;
+
+    let hasAutoTriggered = isLectureCompleted;
+
+    // Trigger completion when playback finishes
+    video.addEventListener('ended', function() {
+      if (!hasAutoTriggered) {
+        hasAutoTriggered = true;
+        toggleLectureCompletion(currentLectureId, true);
+      }
+    });
+
+    // Trigger completion when user has watched past 90%
+    video.addEventListener('timeupdate', function() {
+      if (!hasAutoTriggered && video.duration && video.currentTime) {
+        if ((video.currentTime / video.duration) >= 0.90) {
+          hasAutoTriggered = true;
+          toggleLectureCompletion(currentLectureId, true);
+        }
+      }
+    });
+  });
+</script>
 {% endblock %}
