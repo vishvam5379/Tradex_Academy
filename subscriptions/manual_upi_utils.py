@@ -60,10 +60,15 @@ def generate_upi_qr_data_uri(upi_uri):
         return ""
 
     if qrcode is None:
-        err = f"[UPI_QR_ERROR] qrcode package is NOT available at runtime. Import exception was: {QRCODE_IMPORT_ERROR}"
-        print(err, flush=True)
-        logger.error(err)
-        return ""
+        try:
+            import qrcode as _qr
+            import qrcode.image.svg
+            qrcode = _qr
+        except Exception as e_dyn:
+            err = f"[UPI_QR_ERROR] qrcode package is NOT available at runtime. Import exception was: {QRCODE_IMPORT_ERROR or e_dyn}"
+            print(err, flush=True)
+            logger.error(err)
+            return ""
 
     # Primary: SVG via SvgPathImage (100% pure Python ElementTree, ZERO Pillow, ZERO C-libraries)
     try:
