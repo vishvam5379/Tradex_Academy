@@ -129,9 +129,10 @@
 
       <div class="header-right">
         {% if user_has_active_subscription %}
-        <span class="badge badge-green num">
-          <i data-lucide="check" style="width: 12px; height: 12px;"></i>
-          {{ active_subscription.plan_name }} &mdash; {{ active_subscription.days_remaining }} days left
+        <span class="badge badge-green num header-plan-badge">
+          <i data-lucide="check" style="width: 12px; height: 12px; flex-shrink: 0;"></i>
+          <span class="plan-badge-full">{{ active_subscription.plan_name }} &mdash; {{ active_subscription.days_remaining }} days left</span>
+          <span class="plan-badge-short">{{ active_subscription.days_remaining }} days left</span>
         </span>
         {% else %}
         <a href="/pay/starter/" class="badge badge-gray num hide-on-mobile" style="text-decoration: none; color: var(--text-secondary);">
