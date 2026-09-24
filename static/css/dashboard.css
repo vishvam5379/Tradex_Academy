@@ -585,67 +585,211 @@
   /* Section headers stacking on mobile */
   .dash-section-header,
   .course-progress-header {
+    display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 4px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
+  .dash-section-header h2,
+  .dash-section-header div,
+  .course-progress-header h3,
+  .course-progress-header span {
+    max-width: 100% !important;
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Safety nets for mobile containers */
+  .dashboard-layout {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .dashboard-main {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+  }
+  .dashboard-content {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 16px 12px !important;
+  }
+  .dashboard-content > div {
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .dash-section-pane {
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
   /* Course tracks cards & text wrapping */
-  .course-tracks-grid {
-    grid-template-columns: 100% !important;
+  .course-tracks-grid,
+  .grid-2 {
+    display: flex !important;
+    flex-direction: column !important;
     gap: 16px !important;
     min-width: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
+    box-sizing: border-box !important;
   }
-  .course-tracks-grid .card {
+  .course-tracks-grid .card,
+  .grid-2 .card,
+  .dash-section-pane .card {
     min-width: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    padding: 18px 16px !important;
+    padding: 18px 14px !important;
     overflow: hidden !important;
   }
-  .course-tracks-grid .card p {
+
+  /* Course card headers */
+  .course-tracks-grid .card > div > div:first-child,
+  .grid-2 .card > div > div:first-child {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .course-tracks-grid .card > div > div:first-child > div,
+  .grid-2 .card > div > div:first-child > div {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .course-tracks-grid .card h3,
+  .grid-2 .card h3 {
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Course description & body text */
+  .course-tracks-grid .card p,
+  .grid-2 .card p,
+  .dash-section-pane .card p {
     overflow-wrap: break-word !important;
     word-wrap: break-word !important;
     word-break: normal !important;
     max-width: 100% !important;
+    box-sizing: border-box !important;
     margin-bottom: 14px !important;
   }
-  .course-tracks-grid .card .btn {
-    white-space: normal !important;
-    overflow-wrap: break-word !important;
-    word-break: break-word !important;
-    text-align: center !important;
-    max-width: 100% !important;
-    line-height: 1.35 !important;
-    padding: 10px 14px !important;
-  }
-  /* Progress cards in grid-2 */
-  .grid-2 {
-    grid-template-columns: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-  }
-  .grid-2 .card {
-    min-width: 0 !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    padding: 18px 16px !important;
-    overflow: hidden !important;
-  }
-  .grid-2 .card p {
+  .grid-2 .card strong {
     overflow-wrap: break-word !important;
     word-wrap: break-word !important;
+  }
+
+  /* Curriculum lectures header */
+  .course-tracks-grid .card div[style*="text-transform: uppercase"] {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    gap: 4px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Curriculum lecture rows (Issue 2) */
+  .course-tracks-grid .card div[style*="rgba(255,255,255,0.03)"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 8px 8px !important;
+    overflow: hidden !important;
+    gap: 6px !important;
+  }
+  .course-tracks-grid .card div[style*="rgba(255,255,255,0.03)"] > div:first-child {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    max-width: calc(100% - 70px) !important;
+    overflow: hidden !important;
+  }
+  .course-tracks-grid .card div[style*="rgba(255,255,255,0.03)"] span[style*="text-overflow: ellipsis"],
+  .course-tracks-grid .card div[style*="rgba(255,255,255,0.03)"] > div:first-child > span:nth-child(2) {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    display: inline-block !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
     max-width: 100% !important;
   }
-  .grid-2 .card .btn {
+  .course-tracks-grid .card div[style*="rgba(255,255,255,0.03)"] > div:last-child {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
+  }
+
+  /* CTA & Unlock buttons (Issue 3) */
+  .course-tracks-grid .card .btn,
+  .grid-2 .card .btn,
+  .dash-section-pane .card .btn,
+  .dashboard-content .card .btn {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
     white-space: normal !important;
     overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
     word-break: break-word !important;
+    text-align: center !important;
+    line-height: 1.35 !important;
+    padding: 10px 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+  }
+  .course-tracks-grid .card .btn *,
+  .course-tracks-grid .card .btn span,
+  .grid-2 .card .btn *,
+  .grid-2 .card .btn span,
+  .dash-section-pane .card .btn *,
+  .dash-section-pane .card .btn span,
+  .dashboard-content .card .btn *,
+  .dashboard-content .card .btn span {
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    word-break: normal !important;
     text-align: center !important;
     max-width: 100% !important;
   }
+
   #notificationMenu {
     max-width: calc(100vw - 24px) !important;
     right: -10px !important;
@@ -655,5 +799,19 @@
 @media (max-width: 480px) {
   .dashboard-header .header-left span {
     display: none; /* Hide header title text on narrow phones */
+  }
+  .dashboard-content {
+    padding: 12px 8px !important;
+  }
+  .course-tracks-grid .card,
+  .grid-2 .card,
+  .dash-section-pane .card {
+    padding: 14px 10px !important;
+  }
+  .course-tracks-grid .card .btn,
+  .grid-2 .card .btn,
+  .dash-section-pane .card .btn {
+    font-size: 0.8125rem !important;
+    padding: 8px 6px !important;
   }
 }
