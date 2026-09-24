@@ -23,23 +23,12 @@ def user_has_combo_access(user):
 
 def landing_page(request):
     """Public landing page showcasing the academy, curriculum, and subscription plan."""
-    try:
-        categories = Category.objects.prefetch_related('subcategories__videos').all().order_by('order')
-        total_videos = Video.objects.count()
-        total_subcategories = SubCategory.objects.count()
-        preview_videos = Video.objects.filter(is_free_preview=True)[:3]
-    except Exception:
-        categories = []
-        total_videos = 0
-        total_subcategories = 0
-        preview_videos = []
-
-    return render(request, 'courses/landing.html', {
-        'categories': categories,
-        'total_videos': total_videos,
-        'total_subcategories': total_subcategories,
-        'preview_videos': preview_videos,
-    })
+    response = render(request, 'courses/landing.html')
+    if not request.user.is_authenticated:
+        response['Cache-Control'] = 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400'
+    else:
+        response['Cache-Control'] = 'private, no-cache, no-store, must-revalidate'
+    return response
 
 
 @login_required
