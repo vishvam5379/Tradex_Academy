@@ -7,16 +7,299 @@
   <title>{% block title %}Tradex Academy | Professional Trading Curriculum{% endblock %}</title>
   <meta name="description" content="{% block meta_desc %}Professional video curriculum for Forex Gold trading and Indian Market stock analysis.{% endblock %}">
   
-  <!-- Inter Font -->
+  <!-- Inter Font with display=swap and non-blocking preload -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  </noscript>
   
-  <!-- Lucide Icons (Outline) -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Lucide Icons (Deferred to prevent render blocking) -->
+  <script src="https://unpkg.com/lucide@latest" defer></script>
   
-  <!-- Core Stylesheet -->
-  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <!-- Critical Above-the-Fold CSS -->
+  <style>
+    :root {
+      --bg-app: #f8f9fb;
+      --bg-sidebar: #ffffff;
+      --bg-surface: #ffffff;
+      --bg-surface-hover: #f9fafb;
+      --bg-elevated: #ffffff;
+      --bg-input: #ffffff;
+      --border-subtle: #e5e7eb;
+      --border-muted: #d1d5db;
+      --border-focus: #2563eb;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --accent-primary: #2563eb;
+      --accent-primary-hover: #1d4ed8;
+      --accent-primary-subtle: #eff6ff;
+      --accent-success: #16a34a;
+      --accent-success-subtle: #f0fdf4;
+      --accent-danger: #dc2626;
+      --accent-danger-subtle: #fef2f2;
+      --accent-warning: #d97706;
+      --accent-warning-subtle: #fffbeb;
+      --radius-xs: 4px;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 10px;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --sidebar-width: 240px;
+      --header-height: 56px;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      overflow-x: hidden;
+      max-width: 100%;
+    }
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .num, .tabular, .price-figure, .metric-value, .timestamp, .duration {
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      color: var(--text-primary);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+    }
+    p {
+      color: var(--text-secondary);
+    }
+    a {
+      color: var(--accent-primary);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    @media (max-width: 640px) {
+      .container {
+        padding: 0 16px;
+      }
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 16px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      font-family: inherit;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background-color: var(--accent-primary);
+      color: #ffffff;
+      font-weight: 500;
+      border: 1px solid transparent;
+    }
+    .btn-primary:hover {
+      background-color: var(--accent-primary-hover);
+      color: #ffffff;
+      text-decoration: none;
+    }
+    .btn-secondary {
+      background-color: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+    }
+    .btn-secondary:hover {
+      background-color: var(--bg-surface-hover);
+      border-color: var(--border-muted);
+      text-decoration: none;
+    }
+    .btn-ghost {
+      background-color: transparent;
+      color: var(--text-secondary);
+      border: 1px solid transparent;
+    }
+    .btn-ghost:hover {
+      background-color: var(--bg-surface-hover);
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.8125rem;
+    }
+    .btn-lg {
+      padding: 10px 20px;
+      font-size: 0.9375rem;
+    }
+    .btn-block {
+      width: 100%;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      border-radius: var(--radius-xs);
+      line-height: 1.4;
+    }
+    .badge-gray {
+      background-color: #f3f4f6;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+    }
+    .badge-green {
+      background-color: var(--accent-success-subtle);
+      color: var(--accent-success);
+      border: 1px solid rgba(22, 163, 74, 0.2);
+    }
+    .brand-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .brand-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-xs);
+      background-color: var(--accent-primary-subtle);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-primary);
+      flex-shrink: 0;
+    }
+    .site-header {
+      border-bottom: 1px solid var(--border-subtle);
+      background-color: var(--bg-sidebar);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .site-header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      width: 100%;
+    }
+    .site-nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .site-nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    @media (max-width: 768px) {
+      .site-header-inner {
+        padding: 0 12px !important;
+      }
+      .site-nav-links {
+        display: none !important;
+      }
+      .site-brand-logo {
+        white-space: nowrap;
+        font-size: 0.8125rem;
+        gap: 6px;
+      }
+      .site-brand-logo .brand-icon {
+        width: 24px;
+        height: 24px;
+      }
+      .site-nav-actions {
+        gap: 4px;
+      }
+      .site-nav-actions .btn {
+        padding: 5px 8px;
+        font-size: 0.75rem;
+      }
+    }
+    .hero-title {
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+    @media (max-width: 480px) {
+      .hero-title {
+        font-size: 1.6rem !important;
+        line-height: 1.25 !important;
+      }
+      .hero-actions {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 10px !important;
+      }
+      .hero-actions .btn {
+        width: 100% !important;
+      }
+    }
+    .messages-container {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 380px;
+    }
+    .alert {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+      background-color: #ffffff;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    @media (max-width: 480px) {
+      .messages-container {
+        left: 12px;
+        right: 12px;
+        max-width: none;
+      }
+    }
+  </style>
+  
+  <!-- Core Stylesheet: Preloaded to avoid render-blocking -->
+  <link rel="preload" href="{% static 'css/main.css' %}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="{% static 'css/main.css' %}"></noscript>
   {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -40,11 +323,18 @@
   {% block content %}{% endblock %}
   {% endblock %}
 
-  <!-- Core Scripts -->
-  <script src="{% static 'js/main.js' %}"></script>
+  <!-- Core Scripts: Deferred to eliminate execution bottlenecks before first paint -->
+  <script src="{% static 'js/main.js' %}" defer></script>
   <script>
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
+    function initLucide() {
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initLucide);
+    } else {
+      initLucide();
     }
   </script>
   {% block extra_js %}{% endblock %}
