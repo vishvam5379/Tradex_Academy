@@ -156,6 +156,7 @@ class ManualPayment(models.Model):
         ('pending', 'Pending Verification'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
     ]
 
     user = models.ForeignKey(
@@ -194,6 +195,10 @@ class ManualPayment(models.Model):
     def plan_name(self):
         plans = getattr(settings, 'SUBSCRIPTION_PLANS', {})
         return plans.get(self.plan_key, {}).get('name', self.plan_key.title())
+
+    @property
+    def cancel_reason(self):
+        return self.reject_reason if self.status == 'cancelled' else None
 
 
 class UserNotification(models.Model):

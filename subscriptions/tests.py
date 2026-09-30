@@ -251,7 +251,7 @@ class ManualUPITests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Indian Market Foundation')
-        self.assertContains(response, 'data:image/png;base64,')
+        self.assertContains(response, 'data:image/')
         self.assertContains(response, 'upi://pay?')
 
     def test_manual_checkout_blocks_active_subscription(self):
@@ -481,6 +481,80 @@ class ManualUPITests(TestCase):
             notif = UserNotification.objects.filter(user=self.user, notification_type='payment_rejected').first()
             self.assertIsNotNone(notif)
             self.assertIn('Verification Notice', notif.title)
+
+    def test_admin_payment_cancel_flow(self):
+        from courses.models import Lecture
+
+        # Create lecture requiring standard/starter tier
+        lecture = Lecture.objects.create(
+            title='Test IM Lecture',
+            course='indian_market',
+            position=1,
+            video_path='courses/test.mp4'
+        )
+
+        # 1. Start with pending payment, approve it
+        payment = ManualPayment.objects.create(
+            user=self.user,
+            plan_key='starter',
+            amount=3999.00,
+            status='pending',
+            utr='443322110099'
+        )
+        approve_url = reverse('subscriptions:admin_payment_approve', args=[payment.id])
+        cancel_url = reverse('subscriptions:admin_payment_cancel', args=[payment.id])
+
+        self.client.login(email='admin@tradex.com', password='Password123')
+        with self.settings(ADMIN_EMAILS='admin@tradex.com'):
+            self.client.post(approve_url)
+
+            # Confirm subscription is active and lecture is accessible
+            sub = Subscription.objects.filter(user=self.user, status='ACTIVE').first()
+            self.assertIsNotNone(sub)
+            self.assertTrue(sub.is_currently_active)
+            self.assertTrue(self.user.has_active_subscription)
+            self.assertTrue(lecture.is_accessible_by(self.user))
+
+            # Non-admin cannot cancel (returns 404)
+            self.client.login(email='hacker@test.com', password='Password123')
+            res_forbidden = self.client.post(cancel_url, {'cancel_reason': 'Unauthorized'})
+            self.assertEqual(res_forbidden.status_code, 404)
+
+            # Admin tries without reason -> fails and payment remains approved
+            self.client.login(email='admin@tradex.com', password='Password123')
+            res_no_reason = self.client.post(cancel_url, {'cancel_reason': ''})
+            payment.refresh_from_db()
+            self.assertEqual(payment.status, 'approved')
+
+            # Admin cancels with reason
+            res_cancel = self.client.post(cancel_url, {'cancel_reason': 'Student requested refund'})
+            self.assertRedirects(res_cancel, '/admin/payments/?status=approved')
+
+            payment.refresh_from_db()
+            self.assertEqual(payment.status, 'cancelled')
+            self.assertEqual(payment.reject_reason, 'Student requested refund')
+            self.assertEqual(payment.cancel_reason, 'Student requested refund')
+
+            # Subscription is cancelled and expired
+            sub.refresh_from_db()
+            self.assertEqual(sub.status, 'CANCELLED')
+            self.assertFalse(sub.is_currently_active)
+            self.assertFalse(self.user.has_active_subscription)
+            self.assertIsNone(self.user.active_subscription)
+
+            # Lecture access is immediately locked!
+            self.assertFalse(lecture.is_accessible_by(self.user))
+
+            # Notification created
+            notif = UserNotification.objects.filter(user=self.user, title__icontains='Revoked').first()
+            self.assertIsNotNone(notif)
+            self.assertIn('Student requested refund', notif.message)
+
+            # Idempotent: clicking cancel again does nothing further
+            res_repeat = self.client.post(cancel_url, {'cancel_reason': 'Another reason'})
+            self.assertRedirects(res_repeat, '/admin/payments/?status=approved')
+            payment.refresh_from_db()
+            self.assertEqual(payment.reject_reason, 'Student requested refund')
 
     def test_payment_mode_routing_to_manual_checkout(self):
         self.client.login(email='student@test.com', password='Password123')

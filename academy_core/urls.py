@@ -20,6 +20,7 @@ urlpatterns = [
     path('admin/payments', views_manual.admin_payments_view),
     path('admin/payments/<int:payment_id>/approve/', views_manual.admin_payment_approve_view, name='root_admin_payment_approve'),
     path('admin/payments/<int:payment_id>/reject/', views_manual.admin_payment_reject_view, name='root_admin_payment_reject'),
+    path('admin/payments/<int:payment_id>/cancel/', views_manual.admin_payment_cancel_view, name='root_admin_payment_cancel'),
 
     # Admin Lecture Management (Supabase Storage Videos) - direct paths before Django admin
     path('admin/lectures/', views_admin.admin_lectures_view, name='admin_lectures'),

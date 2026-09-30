@@ -164,6 +164,11 @@
     color: #f87171;
     border: 1px solid rgba(239, 68, 68, 0.3);
   }
+  .badge-cancelled {
+    background: rgba(249, 115, 22, 0.15);
+    color: #fb923c;
+    border: 1px solid rgba(249, 115, 22, 0.35);
+  }
   .screenshot-thumb {
     width: 48px;
     height: 48px;
@@ -294,7 +299,11 @@
     </a>
     <a href="?status=approved" class="tab-pill {% if current_status == 'approved' %}active{% endif %}">
       <span>Approved</span>
-      <span class="count-badge">{{ counts.approved }}</span>
+      <span class="count-badge">{{ counts.approved_total }}</span>
+    </a>
+    <a href="?status=cancelled" class="tab-pill {% if current_status == 'cancelled' %}active{% endif %}">
+      <span>Cancelled</span>
+      <span class="count-badge">{{ counts.cancelled }}</span>
     </a>
     <a href="?status=rejected" class="tab-pill {% if current_status == 'rejected' %}active{% endif %}">
       <span>Rejected</span>
@@ -408,6 +417,21 @@
               by {{ item.obj.reviewed_by.email|default:"Admin" }}
             </div>
             {% endif %}
+            {% elif item.obj.status == 'cancelled' %}
+            <span class="badge-status badge-cancelled">
+              <i data-lucide="ban" style="width: 12px; height: 12px;"></i>
+              <span>Cancelled</span>
+            </span>
+            {% if item.obj.reject_reason %}
+            <div style="font-size: 0.72rem; color: #fb923c; margin-top: 4px; max-width: 180px; line-height: 1.2;">
+              {{ item.obj.reject_reason }}
+            </div>
+            {% endif %}
+            {% if item.obj.reviewed_at %}
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+              by {{ item.obj.reviewed_by.email|default:"Admin" }}
+            </div>
+            {% endif %}
             {% elif item.obj.status == 'rejected' %}
             <span class="badge-status badge-rejected">
               <i data-lucide="x" style="width: 12px; height: 12px;"></i>
@@ -438,6 +462,11 @@
                 <span>Reject</span>
               </button>
             </div>
+            {% elif item.obj.status == 'approved' %}
+            <button type="button" class="btn btn-ghost btn-sm" style="color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.35); padding: 6px 10px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;" onclick="openCancelModal({{ item.obj.id }}, '{{ item.obj.utr }}', '{{ item.obj.user.email|escapejs }}', '{{ item.obj.plan_name|escapejs }}')" title="Cancel subscription access">
+              <i data-lucide="ban" style="width: 13px; height: 13px;"></i>
+              <span>Cancel Access</span>
+            </button>
             {% else %}
             <span style="font-size: 0.75rem; color: var(--text-muted);">Done</span>
             {% endif %}
@@ -495,6 +524,39 @@
     </form>
   </div>
 </div>
+
+<!-- Cancel Access Modal -->
+<div class="modal-overlay" id="cancelModal">
+  <div class="modal-body">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 1.1rem; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="ban" style="width: 18px; height: 18px; color: #ef4444;"></i>
+        <span>Cancel Subscription Access</span>
+      </h3>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="closeCancelModal()" style="padding: 4px;">
+        <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+      </button>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 8px;">
+      Revoke course access for <strong id="cancelUserDisplay" style="color: var(--text-primary);"></strong>
+      (<span id="cancelPlanDisplay" style="color: var(--text-secondary);"></span>).
+    </p>
+    <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 16px;">
+      Payment UTR: <strong id="cancelUtrDisplay" style="color: var(--text-primary); font-family: monospace;"></strong>
+    </p>
+    <form method="POST" id="cancelForm" action="">
+      {% csrf_token %}
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Reason for Cancellation</label>
+        <textarea name="cancel_reason" rows="3" class="form-input" style="width: 100%; box-sizing: border-box; background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-primary); padding: 10px; border-radius: 6px; font-size: 0.875rem;" placeholder="e.g. Refund issued, disputed payment, or student cancellation request." required></textarea>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeCancelModal()">Dismiss</button>
+        <button type="submit" class="btn btn-sm" style="background: #dc2626; color: #fff; border: 1px solid #b91c1c;">Confirm Cancel Access</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -535,6 +597,24 @@
 
   function closeRejectModal() {
     document.getElementById('rejectModal').classList.remove('active');
+  }
+
+  function openCancelModal(paymentId, utr, userEmail, planName) {
+    const modal = document.getElementById('cancelModal');
+    const form = document.getElementById('cancelForm');
+    const displayUtr = document.getElementById('cancelUtrDisplay');
+    const displayUser = document.getElementById('cancelUserDisplay');
+    const displayPlan = document.getElementById('cancelPlanDisplay');
+    form.action = `/admin/payments/${paymentId}/cancel/`;
+    displayUtr.textContent = utr;
+    displayUser.textContent = userEmail || 'User';
+    displayPlan.textContent = planName || 'Plan';
+    modal.classList.add('active');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  function closeCancelModal() {
+    document.getElementById('cancelModal').classList.remove('active');
   }
 </script>
 {% endblock %}

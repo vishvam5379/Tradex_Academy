@@ -12,6 +12,7 @@ urlpatterns = [
     path('admin/payments/', views_manual.admin_payments_view, name='admin_payments'),
     path('admin/payments/<int:payment_id>/approve/', views_manual.admin_payment_approve_view, name='admin_payment_approve'),
     path('admin/payments/<int:payment_id>/reject/', views_manual.admin_payment_reject_view, name='admin_payment_reject'),
+    path('admin/payments/<int:payment_id>/cancel/', views_manual.admin_payment_cancel_view, name='admin_payment_cancel'),
     path('api/order-status/<int:order_id>/', views.order_status_api, name='order_status_api'),
     path('api/orders/<int:order_id>/status/', views.order_status_api, name='api_order_status'),
     path('webhook/', views.razorpay_webhook_view, name='webhook'),

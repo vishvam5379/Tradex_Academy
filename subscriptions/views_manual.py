@@ -307,12 +307,14 @@ def admin_payments_view(request):
         raise Http404("Page not found")
 
     status_filter = request.GET.get('status', 'pending')
-    valid_statuses = ['pending', 'approved', 'rejected', 'all']
+    valid_statuses = ['pending', 'approved', 'cancelled', 'rejected', 'all']
     if status_filter not in valid_statuses:
         status_filter = 'pending'
 
     queryset = ManualPayment.objects.select_related('user', 'reviewed_by').all()
-    if status_filter != 'all':
+    if status_filter == 'approved':
+        queryset = queryset.filter(status__in=['approved', 'cancelled'])
+    elif status_filter != 'all':
         queryset = queryset.filter(status=status_filter)
 
     payments_data = []
@@ -326,6 +328,8 @@ def admin_payments_view(request):
     counts = {
         'pending': ManualPayment.objects.filter(status='pending').count(),
         'approved': ManualPayment.objects.filter(status='approved').count(),
+        'approved_total': ManualPayment.objects.filter(status__in=['approved', 'cancelled']).count(),
+        'cancelled': ManualPayment.objects.filter(status='cancelled').count(),
         'rejected': ManualPayment.objects.filter(status='rejected').count(),
         'all': ManualPayment.objects.count(),
     }
@@ -496,6 +500,88 @@ def admin_payment_reject_view(request, payment_id):
 
     messages.warning(request, f"Payment #{payment.id} marked as rejected and user notified.")
     return redirect('root_admin_payments')
+
+
+@require_POST
+def admin_payment_cancel_view(request, payment_id):
+    """
+    Cancel/revoke subscription access for an approved manual payment.
+    Idempotent: cancelling an already-cancelled row does nothing further.
+    Sets subscription end_date to now (and status to CANCELLED) so that
+    access is immediately revoked across lectures, courses, and dashboard.
+    """
+    if not is_admin_request(request):
+        raise Http404("Page not found")
+
+    reason = request.POST.get('cancel_reason', '').strip()
+    if not reason:
+        messages.error(request, "A cancellation reason is required.")
+        return redirect('/admin/payments/?status=approved')
+
+    now = timezone.now()
+
+    with transaction.atomic():
+        payment = ManualPayment.objects.select_for_update().filter(id=payment_id).first()
+        if not payment:
+            raise Http404("Payment not found")
+
+        # Idempotent: clicking Cancel on an already-cancelled row does nothing further
+        if payment.status == 'cancelled':
+            messages.info(request, f"Payment #{payment.id} is already cancelled.")
+            return redirect('/admin/payments/?status=approved')
+
+        if payment.status != 'approved':
+            messages.error(request, f"Payment #{payment.id} is in status '{payment.status}' and cannot be cancelled.")
+            return redirect('root_admin_payments')
+
+        # Determine matching plan types
+        if payment.plan_key in ['elite', 'combo']:
+            matching_plans = ['elite', 'combo']
+        elif payment.plan_key in ['pro', 'gold_strategy']:
+            matching_plans = ['pro', 'gold_strategy']
+        else:
+            matching_plans = ['starter', 'standard']
+
+        # Revoke all matching active subscriptions or subscriptions created for this payment
+        from django.db.models import Q
+        subs_to_revoke = Subscription.objects.select_for_update().filter(
+            Q(razorpay_payment_id=f"utr_{payment.utr}") |
+            Q(razorpay_order_id=f"manual_{payment.utr}") |
+            Q(plan_type__in=matching_plans, status='ACTIVE'),
+            user=payment.user
+        )
+
+        for sub in subs_to_revoke:
+            sub.status = 'CANCELLED'
+            if sub.end_date > now:
+                sub.end_date = now
+            sub.save(update_fields=['status', 'end_date', 'updated_at'])
+
+        # Update payment record
+        payment.status = 'cancelled'
+        payment.reject_reason = reason
+        payment.reviewed_at = now
+        payment.reviewed_by = request.user
+        payment.user_notified = False
+        payment.save(update_fields=['status', 'reject_reason', 'reviewed_at', 'reviewed_by', 'user_notified'])
+
+        # Notify user of cancellation
+        UserNotification.objects.create(
+            user=payment.user,
+            title="⚠️ Subscription Access Revoked",
+            message=(
+                f"Your subscription access for {payment.plan_name} (UTR: {payment.utr}) "
+                f"has been cancelled. Reason: {reason}."
+            ),
+            notification_type='info',
+            link='/dashboard/'
+        )
+
+    messages.warning(
+        request,
+        f"Payment #{payment.id} (UTR: {payment.utr}) access cancelled. Course access revoked for {payment.user.email}."
+    )
+    return redirect('/admin/payments/?status=approved')
 
 
 @login_required
